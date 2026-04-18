@@ -1001,151 +1001,344 @@ public class ThreePrisonersDilemma {
     }
 
     // =========================================================
-    // SUBMISSION: Classifier-Responder
+    // EXHIBITION: NostalgicPlayer — "Midnight in Paris"
     // =========================================================
     /*
-     * Submission strategy. Classifies each opponent into one of four classes based on
-     * observed history (no active probing), then emits one action per round using a
-     * pessimistic joint-response rule. On the provably-final round (n=109), defects
-     * if both opponents are classified SAFE.
+     * Golden Age thinking. Tracks each opponent's longest cooperation
+     * streak as their "golden era." Stays romantic about an opponent once
+     * they've had a real era (>=3 consecutive C), even through later defections,
+     * unless recent behavior (3+ defects in last 5) cracks the spell.
      *
-     * See docs/superpowers/specs/2026-04-18-classifier-responder-design.md.
+     * Decision: both still romantic -> cooperate. Both disillusioned -> defect.
+     * Exactly one romantic -> "Gil/Adriana moment," two idealized pasts don't
+     * reconcile -> defect.
      *
-     * Classes: AMBIGUOUS=0, SAFE=1, EXPLOITABLE=2, HOSTILE=3.
+     * Stays in the dream through the final round (no endgame defection).
+     * Fully deterministic.
      */
-    class ClassifierResponderPlayer extends Player {
-        static final int CLASS_AMBIGUOUS = 0;
-        static final int CLASS_SAFE = 1;
-        static final int CLASS_EXPLOITABLE = 2;
-        static final int CLASS_HOSTILE = 3;
-
-        /** True if any of the three players defected in round r-1 or r-2.
-         *  At r == 0, always false (no prior rounds). */
-        boolean isProvoked(int r, int[] h1, int[] h2, int[] h3) {
-            if (r <= 0) return false;
-            int lo = Math.max(0, r - 2);
-            for (int i = lo; i < r; i++) {
-                if (h1[i] == 1 || h2[i] == 1 || h3[i] == 1) return true;
+    class NostalgicPlayer extends Player {
+        int longestCoopStreak(int[] h) {
+            int best = 0, cur = 0;
+            for (int v : h) {
+                if (v == 0) { cur++; if (cur > best) best = cur; }
+                else cur = 0;
             }
-            return false;
+            return best;
         }
 
-        /** Count defections in opp that were not provoked by any player's defection in r-1 or r-2. */
-        int countUnprovokedDefects(int[] opp, int[] me, int[] other) {
-            int count = 0;
-            for (int r = 0; r < opp.length; r++) {
-                if (opp[r] == 1 && !isProvoked(r, opp, me, other)) count++;
-            }
-            return count;
-        }
-
-        /** Same as countUnprovokedDefects, but only for rounds whose index is in [lo, hi] inclusive. */
-        int countUnprovokedDefectsInWindow(int[] opp, int[] me, int[] other, int lo, int hi) {
-            int count = 0;
-            int end = Math.min(opp.length - 1, hi);
-            for (int r = Math.max(0, lo); r <= end; r++) {
-                if (opp[r] == 1 && !isProvoked(r, opp, me, other)) count++;
-            }
-            return count;
-        }
-
-        /** Count defections in a single history. */
-        int countDefects(int[] h) {
+        int recentDefects(int[] h, int window) {
+            int start = Math.max(0, h.length - window);
             int c = 0;
-            for (int v : h) if (v == 1) c++;
+            for (int i = start; i < h.length; i++) if (h[i] == 1) c++;
             return c;
         }
 
-        /** Total defections across all three player histories. */
-        int totalDefectsInMatch(int[] h1, int[] h2, int[] h3) {
-            return countDefects(h1) + countDefects(h2) + countDefects(h3);
+        boolean hasGoldenEra(int[] h)  { return longestCoopStreak(h) >= 3; }
+        boolean spellCracked(int[] h)  { return recentDefects(h, 5) >= 3; }
+        boolean stillRomantic(int[] h) { return hasGoldenEra(h) && !spellCracked(h); }
+
+        int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
+            if (n == 0) return 0;
+
+            boolean g1 = hasGoldenEra(oppHistory1);
+            boolean g2 = hasGoldenEra(oppHistory2);
+            if (!g1 && !g2) return 0;
+
+            boolean r1 = stillRomantic(oppHistory1);
+            boolean r2 = stillRomantic(oppHistory2);
+            if (r1 && r2) return 0;
+            return 1;
+        }
+    }
+
+    // =========================================================
+    // EXHIBITION: LaLaLandPlayer — "City of Stars"
+    // =========================================================
+    /*
+     * Six-chapter seasonal arc over the 110-round match, mirroring the
+     * film's structure: Winter -> Spring -> Summer -> Fall -> Winter -> Epilogue.
+     *
+     *   Winter 1 (0-19):   TFT. Wary opening.
+     *   Spring   (20-44):  Always cooperate. Falling in love.
+     *   Summer   (45-69):  Cooperate unless BOTH opponents defected last round.
+     *                      One you forgive, two you notice.
+     *   Fall     (70-94):  Grim within the season. One in-season defection
+     *                      ends cooperation for the rest of Fall.
+     *   Winter 2 (95-108): TFT. Resigned, seasoned by history.
+     *   Epilogue (109):    Cooperate unconditionally. The knowing smile.
+     */
+    class LaLaLandPlayer extends Player {
+        int phase(int n) {
+            if (n == 109) return 5;
+            if (n < 20) return 0;
+            if (n < 45) return 1;
+            if (n < 70) return 2;
+            if (n < 95) return 3;
+            return 4;
         }
 
-        /** Rounds elapsed since the most recent defection by anyone.
-         *  If last defect was at round r, returns n - r.
-         *  If no defects, returns Integer.MAX_VALUE. */
-        int roundsSinceAnyDefect(int n, int[] h1, int[] h2, int[] h3) {
-            for (int r = n - 1; r >= 0; r--) {
-                if (h1[r] == 1 || h2[r] == 1 || h3[r] == 1) return n - r;
+        int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
+            switch (phase(n)) {
+                case 0: // Winter 1 — TFT
+                    if (n == 0) return 0;
+                    return (oppHistory1[n - 1] == 1 || oppHistory2[n - 1] == 1) ? 1 : 0;
+                case 1: // Spring — always cooperate
+                    return 0;
+                case 2: // Summer — cooperate unless BOTH defected last round
+                    return (oppHistory1[n - 1] == 1 && oppHistory2[n - 1] == 1) ? 1 : 0;
+                case 3: // Fall — grim within season
+                    for (int i = 70; i < n; i++) {
+                        if (oppHistory1[i] == 1 || oppHistory2[i] == 1) return 1;
+                    }
+                    return 0;
+                case 4: // Winter 2 — TFT
+                    return (oppHistory1[n - 1] == 1 || oppHistory2[n - 1] == 1) ? 1 : 0;
+                case 5: // Epilogue — knowing smile
+                    return 0;
             }
-            return Integer.MAX_VALUE;
+            return 0;
+        }
+    }
+
+    // =========================================================
+    // EXHIBITION: FistBumpPlayer — "Project Hail Mary" (Partnership)
+    // =========================================================
+    /*
+     * Asymmetric 3-player partnership. Round 0 cooperate. Track mutual-C
+     * streak with each opponent. First opponent to reach a streak of 5
+     * becomes "Rocky" — locked in as partner for the match. Before the
+     * partner locks in, play TFT (defect iff either opponent defected last
+     * round). After lock-in, mirror the partner's last move and ignore the
+     * non-partner — even if they're exploiting us. If the partner defects
+     * in 3+ of the last 5 rounds, grief switch to permanent defect. Round
+     * 109: cooperate iff the partner is still active (stay on Erid).
+     */
+    class FistBumpPlayer extends Player {
+        // Returns 0 or 1 for the partner opponent, or -1 if no partner yet.
+        int findPartner(int n, int[] myHistory, int[] opp1, int[] opp2) {
+            int streak1 = 0, streak2 = 0;
+            for (int i = 0; i < n; i++) {
+                if (myHistory[i] == 0 && opp1[i] == 0) {
+                    streak1++;
+                    if (streak1 >= 5) return 0;
+                } else streak1 = 0;
+                if (myHistory[i] == 0 && opp2[i] == 0) {
+                    streak2++;
+                    if (streak2 >= 5) return 1;
+                } else streak2 = 0;
+            }
+            return -1;
         }
 
-        /** Classify one opponent based on observed history. See spec §5 for rules. */
-        int classify(int n, int[] opp, int[] me, int[] other) {
-            if (n == 0) return CLASS_AMBIGUOUS;
-
-            // H1: defection at round 0 is always unprovoked
-            if (opp.length > 0 && opp[0] == 1) return CLASS_HOSTILE;
-
-            // H2: two or more unprovoked defections anywhere
-            if (countUnprovokedDefects(opp, me, other) >= 2) return CLASS_HOSTILE;
-
-            // H3: any unprovoked defection in the 0..10 window (monotonic)
-            if (countUnprovokedDefectsInWindow(opp, me, other, 0, 10) >= 1) return CLASS_HOSTILE;
-
-            // E1: opp has 0 defects, defection happened, and it's been quiet for 5+ rounds
-            int totalDefects = totalDefectsInMatch(opp, me, other);
-            int rsad = roundsSinceAnyDefect(n, opp, me, other);
-            if (totalDefects >= 1 && rsad >= 5 && countDefects(opp) == 0) {
-                return CLASS_EXPLOITABLE;
+        boolean griefTriggered(int n, int[] partnerHist) {
+            int start = Math.max(0, n - 5);
+            int defects = 0;
+            for (int i = start; i < n; i++) {
+                if (partnerHist[i] == 1) defects++;
             }
-
-            // E2: opp hasn't defected in last 20 rounds, but someone else has
-            if (n >= 20) {
-                boolean recentOppDefect = false;
-                boolean recentOtherDefect = false;
-                for (int r = n - 20; r < n; r++) {
-                    if (opp[r] == 1) recentOppDefect = true;
-                    if (me[r] == 1 || other[r] == 1) recentOtherDefect = true;
-                }
-                if (!recentOppDefect && recentOtherDefect) return CLASS_EXPLOITABLE;
-            }
-
-            // S1: all opp's defections were provoked, and last one was >= 3 rounds ago
-            boolean allProvoked = true;
-            int lastOppDefect = -1;
-            for (int r = 0; r < opp.length; r++) {
-                if (opp[r] == 1) {
-                    lastOppDefect = r;
-                    if (!isProvoked(r, opp, me, other)) { allProvoked = false; break; }
-                }
-            }
-            if (allProvoked && (lastOppDefect == -1 || n - lastOppDefect >= 3)) {
-                if (countDefects(opp) > 0) return CLASS_SAFE; // S1
-            }
-
-            // S2: 0 defections and n >= 8
-            if (countDefects(opp) == 0 && n >= 8) return CLASS_SAFE;
-
-            return CLASS_AMBIGUOUS;
-        }
-
-        /** Pessimistic joint response per spec §6. */
-        int jointResponse(int c1, int c2, int opp1Last, int opp2Last) {
-            // Defect if either opponent is HOSTILE or EXPLOITABLE
-            if (c1 == CLASS_HOSTILE || c1 == CLASS_EXPLOITABLE
-             || c2 == CLASS_HOSTILE || c2 == CLASS_EXPLOITABLE) {
-                return 1;
-            }
-            // Cooperate if both are SAFE
-            if (c1 == CLASS_SAFE && c2 == CLASS_SAFE) return 0;
-            // Otherwise mirror the more aggressive opponent's last move (TFT-worse)
-            return Math.max(opp1Last, opp2Last);
+            return defects >= 3;
         }
 
         int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
             if (n == 0) return 0;
 
-            int c1 = classify(n, oppHistory1, myHistory, oppHistory2);
-            int c2 = classify(n, oppHistory2, myHistory, oppHistory1);
+            int partner = findPartner(n, myHistory, oppHistory1, oppHistory2);
 
-            // Endgame override: provably-final round (n == 109) with both opponents SAFE
-            if (n == 109 && c1 == CLASS_SAFE && c2 == CLASS_SAFE) return 1;
+            // Epilogue: stay with an active partner, else go home.
+            if (n == 109) {
+                if (partner == -1) return 1;
+                int[] pHist = (partner == 0) ? oppHistory1 : oppHistory2;
+                return griefTriggered(n, pHist) ? 1 : 0;
+            }
 
-            int opp1Last = oppHistory1[n - 1];
-            int opp2Last = oppHistory2[n - 1];
-            return jointResponse(c1, c2, opp1Last, opp2Last);
+            // Before partner is locked in: TFT
+            if (partner == -1) {
+                return (oppHistory1[n - 1] == 1 || oppHistory2[n - 1] == 1) ? 1 : 0;
+            }
+
+            // After partner locked in: mirror partner, ignore non-partner,
+            // grief-switch on sustained partner defection.
+            int[] partnerHist = (partner == 0) ? oppHistory1 : oppHistory2;
+            if (griefTriggered(n, partnerHist)) return 1;
+            return partnerHist[n - 1] == 0 ? 0 : 1;
+        }
+    }
+
+    // =========================================================
+    // EXHIBITION: XenolinguistPlayer — "Project Hail Mary" (Probe)
+    // =========================================================
+    /*
+     * Probe-then-commit. Rounds 0-5 play a fixed C,D,C,D,C,D probe
+     * regardless of opponents (Grace banging on the wall). At round 6,
+     * classify each opponent one-shot from their probe-phase behavior:
+     *   <=1 coop -> DEFECTOR (always defect against them)
+     *   >=5 coop -> COOPERATOR (always cooperate)
+     *   else     -> REACTIVE (play TFT against them)
+     * Per-opponent actions are joined pessimistically: defect if either
+     * per-opponent rule says defect. No re-classification — the experiment
+     * is done.
+     */
+    class XenolinguistPlayer extends Player {
+        static final int CLASS_DEFECTOR = 0;
+        static final int CLASS_COOPERATOR = 1;
+        static final int CLASS_REACTIVE = 2;
+
+        int probeMove(int n) { return (n % 2 == 0) ? 0 : 1; }
+
+        int classify(int[] oppHist) {
+            int coop = 0;
+            for (int i = 0; i < 6; i++) if (oppHist[i] == 0) coop++;
+            if (coop <= 1) return CLASS_DEFECTOR;
+            if (coop >= 5) return CLASS_COOPERATOR;
+            return CLASS_REACTIVE;
+        }
+
+        int perOppAction(int klass, int oppLast) {
+            switch (klass) {
+                case CLASS_DEFECTOR:   return 1;
+                case CLASS_COOPERATOR: return 0;
+                case CLASS_REACTIVE:   return oppLast; // TFT
+            }
+            return 0;
+        }
+
+        int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
+            if (n < 6) return probeMove(n);
+
+            int c1 = classify(oppHistory1);
+            int c2 = classify(oppHistory2);
+
+            int a1 = perOppAction(c1, oppHistory1[n - 1]);
+            int a2 = perOppAction(c2, oppHistory2[n - 1]);
+
+            return (a1 == 1 || a2 == 1) ? 1 : 0;
+        }
+    }
+
+    // =========================================================
+    // EXHIBITION: FiveHundredDaysPlayer — "500 Days of Summer"
+    // =========================================================
+    /*
+     * Expectations vs Reality. Each opponent is held to a 90% cooperation
+     * baseline — the fantasy. The dream is "broken" the moment either
+     * opponent's cumulative cooperation rate ever dips below 0.9 at any
+     * point in history. Once broken, it stays broken forever, even if the
+     * rate climbs back. Dream intact -> cooperate. Dream broken -> defect.
+     *
+     * Any defection in the first ~10 rounds is fatal to the dream. Tom's
+     * impossible standard: anything less than perfect is a betrayal.
+     */
+    class FiveHundredDaysPlayer extends Player {
+        // Was either opponent's cumulative cooperation rate ever below 90%
+        // at any prior round? Integer math: rate < 0.9 iff 10*coops < 9*t.
+        boolean dreamBroken(int n, int[] h1, int[] h2) {
+            int c1 = 0, c2 = 0;
+            for (int t = 1; t <= n; t++) {
+                if (h1[t - 1] == 0) c1++;
+                if (h2[t - 1] == 0) c2++;
+                if (10 * c1 < 9 * t || 10 * c2 < 9 * t) return true;
+            }
+            return false;
+        }
+
+        int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
+            if (n == 0) return 0;
+            return dreamBroken(n, oppHistory1, oppHistory2) ? 1 : 0;
+        }
+    }
+
+    // =========================================================
+    // EXHIBITION: MillersPlanetPlayer — "Interstellar" (Delayed Signal)
+    // =========================================================
+    /*
+     * Time dilation / delayed communication. The player only reacts to
+     * opponent actions from 7 rounds ago (Miller's-planet ratio: 1 hour
+     * = 7 years). Rounds 0-6: cooperate (no signal has arrived yet).
+     * Round 7+: TFT based on opp actions at round n-7 — defect iff
+     * either opponent defected back then. The final 7 rounds of the
+     * match can never be reacted to; opponents who defect at the end
+     * go unpunished. Cooper watching years-old videos from home.
+     */
+    class MillersPlanetPlayer extends Player {
+        static final int LAG = 7;
+
+        int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
+            if (n < LAG) return 0; // no signal yet
+            int t = n - LAG;
+            return (oppHistory1[t] == 1 || oppHistory2[t] == 1) ? 1 : 0;
+        }
+    }
+
+    // =========================================================
+    // EXHIBITION: PlanABPlayer — "Interstellar" (Plan A / Plan B)
+    // =========================================================
+    /*
+     * Publicly commits to Plan A (TFT — save everyone). At round 50,
+     * checks cumulative score over the first 50 rounds. If average
+     * payoff < 4.0 (total < 200), Plan A has failed and the player
+     * reveals the real plan: Plan B, permanent defect. Otherwise stays
+     * on Plan A for the rest of the match. Captures Professor Brand's
+     * deception — the mission was always a survival strategy.
+     */
+    class PlanABPlayer extends Player {
+        int scoreFirstFifty(int[] me, int[] o1, int[] o2) {
+            int total = 0;
+            for (int i = 0; i < 50; i++) {
+                total += payoff[me[i]][o1[i]][o2[i]];
+            }
+            return total;
+        }
+
+        boolean planBRevealed(int n, int[] me, int[] o1, int[] o2) {
+            if (n < 50) return false;
+            return scoreFirstFifty(me, o1, o2) < 200;
+        }
+
+        int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
+            if (n == 0) return 0;
+            if (planBRevealed(n, myHistory, oppHistory1, oppHistory2)) return 1;
+            // Plan A: TFT (set-union retaliation)
+            return (oppHistory1[n - 1] == 1 || oppHistory2[n - 1] == 1) ? 1 : 0;
+        }
+    }
+
+    // =========================================================
+    // EXHIBITION: BiancasBanPlayer — "10 Things I Hate About You"
+    // =========================================================
+    /*
+     * Asymmetric contingent rule. One opponent is "Kat" (the harder sister,
+     * sets the gate); the other is "Bianca" (gated). Kat is the first
+     * opponent to defect. If neither has defected by round 5, opp1 is
+     * Kat by default. Player cooperates iff Kat has cooperated in at least
+     * one of the last 3 rounds, otherwise defects. Bianca's behavior is
+     * irrelevant — she's gated by Kat. Captures the film's setup:
+     * "Bianca can date only when Kat does."
+     */
+    class BiancasBanPlayer extends Player {
+        // Return 0 or 1 for Kat, or -1 if not yet determined.
+        int findKat(int n, int[] opp1, int[] opp2) {
+            for (int i = 0; i < n; i++) {
+                if (opp1[i] == 1) return 0; // opp1 defected first (ties go to opp1)
+                if (opp2[i] == 1) return 1;
+            }
+            if (n >= 5) return 0; // arbitrary default once the sister dynamic is forced
+            return -1;
+        }
+
+        int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
+            if (n == 0) return 0;
+
+            int kat = findKat(n, oppHistory1, oppHistory2);
+            if (kat == -1) return 0; // sister dynamic hasn't emerged yet
+
+            int[] katHist = (kat == 0) ? oppHistory1 : oppHistory2;
+
+            // Cooperate iff Kat cooperated in at least one of the last 3 rounds.
+            int start = Math.max(0, n - 3);
+            for (int i = start; i < n; i++) {
+                if (katHist[i] == 0) return 0;
+            }
+            return 1;
         }
     }
 
@@ -1189,7 +1382,7 @@ public class ThreePrisonersDilemma {
      * you will need to add a new entry to makePlayer, and change numPlayers.
      */
 
-    int numPlayers = 29; // 28 zoo + 1 submission (ClassifierResponder)
+    int numPlayers = 36; // 28 zoo + 8 exhibition (Nostalgic, LaLaLand, FistBump, Xenolinguist, FiveHundredDays, MillersPlanet, PlanAB, BiancasBan)
 
     Player makePlayer(int which) {
         switch (which) {
@@ -1250,7 +1443,21 @@ public class ThreePrisonersDilemma {
             case 27:
                 return new DBSPlayer();
             case 28:
-                return new ClassifierResponderPlayer();
+                return new NostalgicPlayer();
+            case 29:
+                return new LaLaLandPlayer();
+            case 30:
+                return new FistBumpPlayer();
+            case 31:
+                return new XenolinguistPlayer();
+            case 32:
+                return new FiveHundredDaysPlayer();
+            case 33:
+                return new MillersPlanetPlayer();
+            case 34:
+                return new PlanABPlayer();
+            case 35:
+                return new BiancasBanPlayer();
         }
         throw new RuntimeException("Bad argument passed to makePlayer");
     }
@@ -1583,273 +1790,6 @@ public class ThreePrisonersDilemma {
             if (dbs.selectAction(6, myHist, random1, allC) != 1) { failures++; System.out.println("FAIL DBS flag untrusted"); }
             System.out.println("PASS DBS");
         } catch (Throwable t) { failures++; System.out.println("FAIL DBS construct: " + t.getMessage()); }
-
-        // ---- ClassifierResponderPlayer ----
-        try {
-            ClassifierResponderPlayer cr = inst.new ClassifierResponderPlayer();
-            if (cr.selectAction(0, new int[0], new int[0], new int[0]) != 0) {
-                failures++;
-                System.out.println("FAIL ClassifierResponder round0 should cooperate");
-            } else {
-                System.out.println("PASS ClassifierResponder round0");
-            }
-            // isProvoked: round 0 is never provoked
-            if (cr.isProvoked(0, new int[0], new int[0], new int[0]) != false) {
-                failures++; System.out.println("FAIL isProvoked r0 should be false");
-            }
-            // isProvoked: round 1 provoked if any history[0] == 1
-            if (cr.isProvoked(1, new int[]{0}, new int[]{1}, new int[]{0}) != true) {
-                failures++; System.out.println("FAIL isProvoked r1 h2 defect");
-            }
-            if (cr.isProvoked(1, new int[]{0}, new int[]{0}, new int[]{0}) != false) {
-                failures++; System.out.println("FAIL isProvoked r1 all cooperated");
-            }
-            // isProvoked: round 3 provoked if defection at round 1 or 2 (r-2 or r-1)
-            if (cr.isProvoked(3, new int[]{0,0,0}, new int[]{0,1,0}, new int[]{0,0,0}) != true) {
-                failures++; System.out.println("FAIL isProvoked r3 h2[1] defect");
-            }
-            // isProvoked: round 3 NOT provoked if the only defection was at round 0 (out of window)
-            if (cr.isProvoked(3, new int[]{0,0,0}, new int[]{1,0,0}, new int[]{0,0,0}) != false) {
-                failures++; System.out.println("FAIL isProvoked r3 defect at r0 out of window");
-            }
-            System.out.println("PASS isProvoked tests");
-            // countUnprovokedDefects: no defections
-            if (cr.countUnprovokedDefects(new int[]{0,0,0,0}, new int[]{0,0,0,0}, new int[]{0,0,0,0}) != 0) {
-                failures++; System.out.println("FAIL countUnprovoked clean history");
-            }
-            // countUnprovokedDefects: single round-0 defection (always unprovoked)
-            if (cr.countUnprovokedDefects(new int[]{1,0,0,0}, new int[]{0,0,0,0}, new int[]{0,0,0,0}) != 1) {
-                failures++; System.out.println("FAIL countUnprovoked r0 defect");
-            }
-            // countUnprovokedDefects: defection at r=3 right after my defection at r=2 -> provoked, count 0
-            if (cr.countUnprovokedDefects(new int[]{0,0,0,1}, new int[]{0,0,1,0}, new int[]{0,0,0,0}) != 0) {
-                failures++; System.out.println("FAIL countUnprovoked provoked defect");
-            }
-            // countUnprovokedDefects: defection at r=3 with clean preceding rounds -> unprovoked, count 1
-            if (cr.countUnprovokedDefects(new int[]{0,0,0,1}, new int[]{0,0,0,0}, new int[]{0,0,0,0}) != 1) {
-                failures++; System.out.println("FAIL countUnprovoked unprovoked late defect");
-            }
-            // countUnprovokedDefectsInWindow: restrict to rounds 0-10
-            {
-                int[] longOpp = new int[15]; longOpp[5] = 1; longOpp[12] = 1; // two defections
-                int[] zero15 = new int[15];
-                if (cr.countUnprovokedDefectsInWindow(longOpp, zero15, zero15, 0, 10) != 1) {
-                    failures++; System.out.println("FAIL countUnprovokedInWindow should count only r=5");
-                }
-                if (cr.countUnprovokedDefectsInWindow(longOpp, zero15, zero15, 0, 20) != 2) {
-                    failures++; System.out.println("FAIL countUnprovokedInWindow wide window");
-                }
-            }
-            System.out.println("PASS countUnprovoked tests");
-            // countDefects
-            if (cr.countDefects(new int[]{0,1,0,1,1}) != 3) {
-                failures++; System.out.println("FAIL countDefects basic");
-            }
-            if (cr.countDefects(new int[0]) != 0) {
-                failures++; System.out.println("FAIL countDefects empty");
-            }
-            // totalDefectsInMatch: sum across all three histories
-            if (cr.totalDefectsInMatch(new int[]{0,1,0}, new int[]{1,0,0}, new int[]{0,0,1}) != 3) {
-                failures++; System.out.println("FAIL totalDefectsInMatch");
-            }
-            // roundsSinceAnyDefect: someone defected at round 2, we're at n=5 -> 5-2 = 3
-            if (cr.roundsSinceAnyDefect(5, new int[]{0,0,1,0,0}, new int[]{0,0,0,0,0}, new int[]{0,0,0,0,0}) != 3) {
-                failures++; System.out.println("FAIL roundsSinceAnyDefect r2 defect");
-            }
-            // roundsSinceAnyDefect: no defects ever -> Integer.MAX_VALUE
-            if (cr.roundsSinceAnyDefect(5, new int[]{0,0,0,0,0}, new int[]{0,0,0,0,0}, new int[]{0,0,0,0,0}) != Integer.MAX_VALUE) {
-                failures++; System.out.println("FAIL roundsSinceAnyDefect no defects");
-            }
-            // roundsSinceAnyDefect: most recent defect at r=n-1 -> 1
-            if (cr.roundsSinceAnyDefect(5, new int[]{0,0,0,0,1}, new int[]{0,0,0,0,0}, new int[]{0,0,0,0,0}) != 1) {
-                failures++; System.out.println("FAIL roundsSinceAnyDefect recent");
-            }
-            System.out.println("PASS aggregate helpers tests");
-            // classify at n=0 -> AMBIGUOUS
-            if (cr.classify(0, new int[0], new int[0], new int[0]) != ClassifierResponderPlayer.CLASS_AMBIGUOUS) {
-                failures++; System.out.println("FAIL classify n=0");
-            }
-            // H1: opp defected at round 0 -> HOSTILE (evaluated at n=1)
-            if (cr.classify(1, new int[]{1}, new int[]{0}, new int[]{0}) != ClassifierResponderPlayer.CLASS_HOSTILE) {
-                failures++; System.out.println("FAIL classify H1 r0 defect");
-            }
-            // H3: unprovoked defection at round 5 -> HOSTILE at n=6
-            {
-                int[] opp = {0,0,0,0,0,1};
-                int[] zero = {0,0,0,0,0,0};
-                if (cr.classify(6, opp, zero, zero) != ClassifierResponderPlayer.CLASS_HOSTILE) {
-                    failures++; System.out.println("FAIL classify H3 r5 unprovoked");
-                }
-            }
-            // H3 monotonic: still HOSTILE at n=15 (window covers the round-5 defection)
-            {
-                int[] opp = new int[15]; opp[5] = 1;
-                int[] zero = new int[15];
-                if (cr.classify(15, opp, zero, zero) != ClassifierResponderPlayer.CLASS_HOSTILE) {
-                    failures++; System.out.println("FAIL classify H3 still HOSTILE at n=15");
-                }
-            }
-            // H2: two unprovoked defections (both outside 0-10 window) -> HOSTILE
-            {
-                int[] opp = new int[20]; opp[12] = 1; opp[16] = 1;
-                int[] zero = new int[20];
-                if (cr.classify(20, opp, zero, zero) != ClassifierResponderPlayer.CLASS_HOSTILE) {
-                    failures++; System.out.println("FAIL classify H2 two late unprovoked");
-                }
-            }
-            // S2: 0 defects, n=8 -> SAFE
-            {
-                int[] opp = new int[8];
-                int[] zero = new int[8];
-                if (cr.classify(8, opp, zero, zero) != ClassifierResponderPlayer.CLASS_SAFE) {
-                    failures++; System.out.println("FAIL classify S2 clean n=8");
-                }
-            }
-            // S1: opp defected only in response (provoked), last defect >=3 rounds ago -> SAFE
-            {
-                int[] opp   = {0,0,1,0,0,0,0,0,0,0};
-                int[] me    = {0,1,0,0,0,0,0,0,0,0};
-                int[] other = {0,0,0,0,0,0,0,0,0,0};
-                if (cr.classify(10, opp, me, other) != ClassifierResponderPlayer.CLASS_SAFE) {
-                    failures++; System.out.println("FAIL classify S1 provoked-only old defect");
-                }
-            }
-            // E1: opp has 0 defections, someone else defected, 5+ rounds ago -> EXPLOITABLE
-            {
-                int[] opp   = new int[10];
-                int[] me    = new int[10];
-                int[] other = new int[10]; other[2] = 1; // defect at r=2, we're at n=10 -> 8 rounds ago
-                if (cr.classify(10, opp, me, other) != ClassifierResponderPlayer.CLASS_EXPLOITABLE) {
-                    failures++; System.out.println("FAIL classify E1 non-retaliator");
-                }
-            }
-            System.out.println("PASS classify tests");
-            // Joint SAFE+SAFE with last=C,C -> cooperate
-            if (cr.jointResponse(ClassifierResponderPlayer.CLASS_SAFE, ClassifierResponderPlayer.CLASS_SAFE, 0, 0) != 0) {
-                failures++; System.out.println("FAIL joint SAFE+SAFE");
-            }
-            // Joint SAFE+HOSTILE -> defect
-            if (cr.jointResponse(ClassifierResponderPlayer.CLASS_SAFE, ClassifierResponderPlayer.CLASS_HOSTILE, 0, 1) != 1) {
-                failures++; System.out.println("FAIL joint SAFE+HOSTILE");
-            }
-            // Joint EXPLOITABLE + anything -> defect
-            if (cr.jointResponse(ClassifierResponderPlayer.CLASS_EXPLOITABLE, ClassifierResponderPlayer.CLASS_SAFE, 0, 0) != 1) {
-                failures++; System.out.println("FAIL joint EXPLOITABLE+SAFE");
-            }
-            // Joint AMBIGUOUS + AMBIGUOUS, opp1 last D -> defect (TFT-worse)
-            if (cr.jointResponse(ClassifierResponderPlayer.CLASS_AMBIGUOUS, ClassifierResponderPlayer.CLASS_AMBIGUOUS, 1, 0) != 1) {
-                failures++; System.out.println("FAIL joint AMBIG+AMBIG TFT-worse D");
-            }
-            // Joint AMBIGUOUS + AMBIGUOUS, both last C -> cooperate
-            if (cr.jointResponse(ClassifierResponderPlayer.CLASS_AMBIGUOUS, ClassifierResponderPlayer.CLASS_AMBIGUOUS, 0, 0) != 0) {
-                failures++; System.out.println("FAIL joint AMBIG+AMBIG TFT-worse C");
-            }
-            // Joint SAFE + AMBIGUOUS, ambig last D -> defect (TFT-worse)
-            if (cr.jointResponse(ClassifierResponderPlayer.CLASS_SAFE, ClassifierResponderPlayer.CLASS_AMBIGUOUS, 0, 1) != 1) {
-                failures++; System.out.println("FAIL joint SAFE+AMBIG D");
-            }
-            // Joint HOSTILE + HOSTILE -> defect
-            if (cr.jointResponse(ClassifierResponderPlayer.CLASS_HOSTILE, ClassifierResponderPlayer.CLASS_HOSTILE, 1, 1) != 1) {
-                failures++; System.out.println("FAIL joint HOSTILE+HOSTILE");
-            }
-            System.out.println("PASS jointResponse tests");
-            // End-to-end: round 0 returns C
-            if (cr.selectAction(0, new int[0], new int[0], new int[0]) != 0) {
-                failures++; System.out.println("FAIL selectAction r0");
-            }
-            // End-to-end: vs two peaceful cooperators at n=50 -> cooperate
-            {
-                int[] peaceful = new int[50]; // all zeros
-                if (cr.selectAction(50, peaceful, peaceful, peaceful) != 0) {
-                    failures++; System.out.println("FAIL selectAction peaceful midgame");
-                }
-            }
-            // End-to-end: endgame defection at n=109 against joint SAFE
-            {
-                int[] me       = new int[109];
-                int[] o1Coop   = new int[109];
-                int[] o2Coop   = new int[109];
-                if (cr.selectAction(109, me, o1Coop, o2Coop) != 1) {
-                    failures++; System.out.println("FAIL selectAction endgame defect at n=109");
-                }
-            }
-            // End-to-end: n=108 with joint SAFE -> still cooperate (no premature defect)
-            {
-                int[] me     = new int[108];
-                int[] o1     = new int[108];
-                int[] o2     = new int[108];
-                if (cr.selectAction(108, me, o1, o2) != 0) {
-                    failures++; System.out.println("FAIL selectAction should NOT defect at n=108");
-                }
-            }
-            // End-to-end: opp1 defected at round 0 -> HOSTILE -> we defect from round 1
-            {
-                int[] me = {0};
-                int[] o1 = {1}; // HOSTILE via H1
-                int[] o2 = {0};
-                if (cr.selectAction(1, me, o1, o2) != 1) {
-                    failures++; System.out.println("FAIL selectAction defect vs round-0 defector");
-                }
-            }
-            System.out.println("PASS selectAction end-to-end tests");
-            // ---- Head-to-head sanity via scoresOfMatch ----
-            // We run exactly 110 rounds (the tournament max) for determinism — no random length here.
-            {
-                float[] r;
-                // vs (Nice, Nice): expect ~6.02 (pure mutual-C plus +2 endgame bonus)
-                r = inst.scoresOfMatch(cr, inst.new NicePlayer(), inst.new NicePlayer(), 110);
-                if (r[0] < 5.99f || r[0] > 6.05f) {
-                    failures++;
-                    System.out.println("FAIL vs (Nice,Nice) avg=" + r[0]);
-                } else {
-                    System.out.println("PASS vs (Nice,Nice) avg=" + r[0]);
-                }
-
-                // vs (Nasty, Nasty): expect ~2.0 (mutual-D from round 1)
-                r = inst.scoresOfMatch(inst.new ClassifierResponderPlayer(),
-                                        inst.new NastyPlayer(), inst.new NastyPlayer(), 110);
-                if (r[0] < 1.95f || r[0] > 2.10f) {
-                    failures++;
-                    System.out.println("FAIL vs (Nasty,Nasty) avg=" + r[0]);
-                } else {
-                    System.out.println("PASS vs (Nasty,Nasty) avg=" + r[0]);
-                }
-
-                // vs (T4T, T4T): expect >= 6.00 (mutual-C then endgame defect)
-                r = inst.scoresOfMatch(inst.new ClassifierResponderPlayer(),
-                                        inst.new T4TPlayer(), inst.new T4TPlayer(), 110);
-                if (r[0] < 6.00f) {
-                    failures++;
-                    System.out.println("FAIL vs (T4T,T4T) avg=" + r[0]);
-                } else {
-                    System.out.println("PASS vs (T4T,T4T) avg=" + r[0]);
-                }
-
-                // vs (TftSpiteful, TftSpiteful): expect >= 6.00
-                r = inst.scoresOfMatch(inst.new ClassifierResponderPlayer(),
-                                        inst.new TftSpitefulPlayer(), inst.new TftSpitefulPlayer(), 110);
-                if (r[0] < 6.00f) {
-                    failures++;
-                    System.out.println("FAIL vs (TftSpiteful,TftSpiteful) avg=" + r[0]);
-                } else {
-                    System.out.println("PASS vs (TftSpiteful,TftSpiteful) avg=" + r[0]);
-                }
-
-                // vs self: three ClassifierResponderPlayer -> all mutual-C then all defect at 109
-                r = inst.scoresOfMatch(inst.new ClassifierResponderPlayer(),
-                                        inst.new ClassifierResponderPlayer(),
-                                        inst.new ClassifierResponderPlayer(), 110);
-                if (r[0] < 5.95f || r[0] > 6.05f) {
-                    failures++;
-                    System.out.println("FAIL vs (self,self) avg=" + r[0]);
-                } else {
-                    System.out.println("PASS vs (self,self) avg=" + r[0]);
-                }
-            }
-        } catch (Throwable t) {
-            failures++;
-            System.out.println("FAIL ClassifierResponder construct: " + t.getMessage());
-        }
 
         System.out.println(failures == 0 ? "ALL TESTS PASS" : ("FAILURES: " + failures));
         if (failures > 0)

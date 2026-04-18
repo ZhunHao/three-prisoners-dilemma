@@ -1,6 +1,6 @@
 # Players Reference
 
-Documentation for the 28 strategies competing in the Three-Player Iterated Prisoner's Dilemma tournament defined in [ThreePrisonersDilemma.java](ThreePrisonersDilemma.java).
+Documentation for the 36 strategies competing in the Three-Player Iterated Prisoner's Dilemma tournament defined in [ThreePrisonersDilemma.java](ThreePrisonersDilemma.java): 28 zoo strategies (baseline + research canon + original foils) plus 8 movie-themed exhibition players.
 
 ## Game Basics
 
@@ -113,9 +113,9 @@ Cooperates until round 88, defects from round 88 onward — exploits the [90, 11
 ### DBSPlayer ([:975](ThreePrisonersDilemma.java:975))
 Simplified Derived Belief Strategy (Au & Nau 2006). Per-opponent deviation counter over 10-round window; treats an opponent as untrusted after 3+ deviations and defects.
 
-## Original Variants
+## Troll Strategies
 
-Three strategies original to this project, with no canonical literature equivalent. Included as non-standard foils that stress-test the rest of the field.
+Three strategies original to this project, with no canonical literature equivalent. Added purely for the lols — deliberately irrational chaos agents with no intention of scoring well. They disrupt cooperative equilibria, and are here for entertainment value first, game theory second.
 
 ### AsylumPlayer ([:456](ThreePrisonersDilemma.java:456))
 Inverted Gradual Punisher. Starts by defecting, **punishes cooperation**, rewards defection. An intentionally irrational foil that rewards opponents for defection and attacks cooperators.
@@ -126,11 +126,39 @@ Picks a random past round and plays TfT against that hallucinated "last round". 
 ### DrunkenPlayer ([:563](ThreePrisonersDilemma.java:563))
 Extends `GradualPunisherPlayer`. Probability of a random action grows linearly with `n`, capped at 80% once `n ≥ 80`. When drunk, it skips the parent's state updates — so punishment/calm counters drift.
 
+## Exhibition Strategies (Movie Night)
+
+Eight thematic players built from movies and books watched with friends. None are literature-backed or tournament-optimized — they capture scenes, arcs, or character psychologies rather than game-theoretic logic. Included as oddball foils and for fun.
+
+### NostalgicPlayer ([:1019](ThreePrisonersDilemma.java:1019))
+*Midnight in Paris.* Tracks each opponent's "golden era" (longest consecutive cooperation streak, min 3). Once an opponent has a real era we stay romantic about them, unless recent defections (3+ in last 5) crack the spell. Both still romantic → cooperate. Neither → defect. Exactly one → the Gil/Adriana moment, two idealized pasts don't reconcile → defect.
+
+### LaLaLandPlayer ([:1070](ThreePrisonersDilemma.java:1070))
+*La La Land.* Six-chapter seasonal arc: Winter 1 (TFT, rounds 0–19), Spring (all-cooperate, 20–44), Summer (cooperate unless both defected last round, 45–69), Fall (grim within season, 70–94), Winter 2 (TFT, 95–108), Epilogue (unconditional cooperate, 109).
+
+### FistBumpPlayer ([:1116](ThreePrisonersDilemma.java:1116))
+*Project Hail Mary.* First opponent to hit 5 consecutive mutual-C becomes "Rocky" — locked in as partner. Before lock-in: TFT. After: mirror Rocky's last move, ignore the non-partner. Grief-switches to permanent defect if Rocky defects in 3+ of last 5. Round 109: cooperate iff Rocky is still active.
+
+### XenolinguistPlayer ([:1181](ThreePrisonersDilemma.java:1181))
+*Project Hail Mary.* Probe-then-commit. Rounds 0–5 play `C,D,C,D,C,D`. At round 6, classify each opponent from their probe response: ≤1 coop → Defector, ≥5 coop → Cooperator, else Reactive. Per-opponent strategy (Defector→D, Cooperator→C, Reactive→TFT) joined pessimistically.
+
+### FiveHundredDaysPlayer ([:1231](ThreePrisonersDilemma.java:1231))
+*500 Days of Summer.* Expectations vs Reality. Each opponent held to a 90% cooperation baseline. The moment either opponent's cumulative cooperation rate ever dips below 0.9, the dream breaks permanently — defect forever, no recovery.
+
+### MillersPlanetPlayer ([:1262](ThreePrisonersDilemma.java:1262))
+*Interstellar.* Delayed signal. Cooperates for first 7 rounds (Miller's-planet ratio: 1 hour = 7 years — no message has arrived). From round 7 on, TFT based on opponent actions 7 rounds ago. The last 7 rounds of the match are unreactable.
+
+### PlanABPlayer ([:1283](ThreePrisonersDilemma.java:1283))
+*Interstellar.* Plan A = TFT (save everyone). At round 50, check cumulative score over the first 50 rounds. If total < 200 (avg < 4.0), reveal Plan B: permanent defect. Otherwise stay on Plan A.
+
+### BiancasBanPlayer ([:1317](ThreePrisonersDilemma.java:1317))
+*10 Things I Hate About You.* One opponent is "Kat" (the first to defect, or opp1 by default after round 5), the other is "Bianca" (gated). Cooperate iff Kat cooperated in at least one of the last 3 rounds, otherwise defect. Bianca's behavior is irrelevant — she's gated by Kat.
+
 ## Adding a New Player
 
 1. Define `class MyPlayer extends Player` inside `ThreePrisonersDilemma` and override `selectAction`.
-2. Increment `numPlayers` at [:1043](ThreePrisonersDilemma.java:1043).
-3. Add a new `case` in [`makePlayer`](ThreePrisonersDilemma.java:1045).
+2. Increment `numPlayers` at [:1385](ThreePrisonersDilemma.java:1385).
+3. Add a new `case` in [`makePlayer`](ThreePrisonersDilemma.java:1387).
 4. Re-run: `javac ThreePrisonersDilemma.java && java ThreePrisonersDilemma`.
 
 Each match calls `makePlayer` fresh, so instance fields reset between matches — safe to keep per-match state (e.g. `punishRemaining`).
@@ -144,10 +172,10 @@ javac ThreePrisonersDilemma.java
 java ThreePrisonersDilemma --test
 ```
 
-Prints `ALL TESTS PASS` when every covered strategy behaves per its canonical definition (20 checks across the 28-strategy field).
+Prints `ALL TESTS PASS` when every covered strategy behaves per its canonical definition. Tests cover T4T, GenerousTFT, MajorityRule, GradualPunisher, ZD players, and the EvolvedANN variants; exhibition players are not tested (thematic, not canonical).
 
 ## Tournament Mechanics
 
-- Every unordered triple `(i, j, k)` with `i ≤ j ≤ k` plays one match ([`runTournament`](ThreePrisonersDilemma.java:1164)).
+- Every unordered triple `(i, j, k)` with `i ≤ j ≤ k` plays one match ([`runTournament`](ThreePrisonersDilemma.java:1522)).
 - Match length: `90 + round(20 * rand)` ≈ 90–110 rounds.
 - `main` runs `NUM_TOURNAMENTS = 100` tournaments and reports average score plus rank-points (1st place earns `numPlayers` points per run).
