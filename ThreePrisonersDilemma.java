@@ -2094,18 +2094,12 @@ public class ThreePrisonersDilemma {
 
     // Helper: returns player indices sorted from highest to lowest score
     int[] getSortedOrder(float[] scores) {
-        int[] sortedOrder = new int[numPlayers];
-        for (int i = 0; i < numPlayers; i++) {
-            int j = i - 1;
-            for (; j >= 0; j--) {
-                if (scores[i] > scores[sortedOrder[j]])
-                    sortedOrder[j + 1] = sortedOrder[j];
-                else
-                    break;
-            }
-            sortedOrder[j + 1] = i;
-        }
-        return sortedOrder;
+        Integer[] indices = new Integer[numPlayers];
+        for (int i = 0; i < numPlayers; i++) indices[i] = i;
+        Arrays.sort(indices, (a, b) -> Float.compare(scores[b], scores[a])); // descending
+        int[] result = new int[numPlayers];
+        for (int i = 0; i < numPlayers; i++) result[i] = indices[i];
+        return result;
     }
 
 } // end of class ThreePrisonersDilemma
