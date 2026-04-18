@@ -1915,6 +1915,111 @@ public class ThreePrisonersDilemma {
             System.out.println("PASS BiancasBanPlayer");
         } catch (Throwable t) { failures++; System.out.println("FAIL BiancasBan: " + t.getMessage()); }
 
+        // ---- Integration Test A: scoresOfMatch smoke test ----
+        try {
+            Player nice1 = inst.new NicePlayer();
+            Player nasty = inst.new NastyPlayer();
+            Player nice2 = inst.new NicePlayer();
+            float[] scores = inst.scoresOfMatch(nice1, nasty, nice2, 10);
+            // scores[0] = NicePlayer avg, scores[1] = NastyPlayer avg, scores[2] = NicePlayer avg
+            // Expected: NicePlayer=3.0, NastyPlayer=8.0, NicePlayer=3.0
+            if (Math.abs(scores[0] - 3.0f) > 1e-6f) {
+                failures++;
+                System.out.println("FAIL scoresOfMatch A: scores[0] (NicePlayer) expected 3.0 got " + scores[0]);
+            }
+            if (Math.abs(scores[1] - 8.0f) > 1e-6f) {
+                failures++;
+                System.out.println("FAIL scoresOfMatch A: scores[1] (NastyPlayer) expected 8.0 got " + scores[1]);
+            }
+            if (Math.abs(scores[2] - 3.0f) > 1e-6f) {
+                failures++;
+                System.out.println("FAIL scoresOfMatch A: scores[2] (NicePlayer) expected 3.0 got " + scores[2]);
+            }
+            if (scores[1] <= scores[0]) {
+                failures++;
+                System.out.println("FAIL scoresOfMatch A: NastyPlayer should outscore NicePlayer");
+            }
+            for (int i = 0; i < 3; i++) {
+                if (scores[i] < 0.0f || scores[i] > 8.0f) {
+                    failures++;
+                    System.out.println("FAIL scoresOfMatch A: scores[" + i + "]=" + scores[i] + " out of [0,8] range");
+                }
+            }
+            float total = scores[0] + scores[1] + scores[2];
+            if (total <= 0.0f) {
+                failures++;
+                System.out.println("FAIL scoresOfMatch A: total score should be > 0, got " + total);
+            }
+            System.out.println("PASS scoresOfMatch integration test (nice=" + scores[0] + ", nasty=" + scores[1] + ", nice=" + scores[2] + ")");
+        } catch (Throwable t) { failures++; System.out.println("FAIL scoresOfMatch integration: " + t.getMessage()); }
+
+        // ---- Integration Test B: runTournament smoke test ----
+        try {
+            float[] tournamentScores = inst.runTournament();
+            if (tournamentScores.length != inst.numPlayers) {
+                failures++;
+                System.out.println("FAIL runTournament: expected length " + inst.numPlayers + " got " + tournamentScores.length);
+            }
+            boolean allPositive = true;
+            for (int i = 0; i < tournamentScores.length; i++) {
+                if (tournamentScores[i] <= 0.0f) {
+                    allPositive = false;
+                    failures++;
+                    System.out.println("FAIL runTournament: player " + i + " score=" + tournamentScores[i] + " not positive");
+                }
+            }
+            // NastyPlayer is index 1; verify reasonable score (> 0)
+            if (tournamentScores[1] <= 0.0f) {
+                failures++;
+                System.out.println("FAIL runTournament: NastyPlayer (index 1) score=" + tournamentScores[1] + " should be > 0");
+            }
+            if (allPositive) {
+                System.out.println("PASS runTournament integration test (numPlayers=" + inst.numPlayers + ", NastyPlayer score=" + tournamentScores[1] + ")");
+            }
+        } catch (Throwable t) { failures++; System.out.println("FAIL runTournament integration: " + t.getMessage()); }
+
+        // ---- Integration Test C: getSortedOrder correctness ----
+        try {
+            float[] tournamentScores = inst.runTournament();
+            int[] order = inst.getSortedOrder(tournamentScores);
+            // Verify all indices 0..numPlayers-1 appear exactly once
+            boolean[] seen = new boolean[inst.numPlayers];
+            boolean dupOrMissing = false;
+            for (int i = 0; i < order.length; i++) {
+                int idx = order[i];
+                if (idx < 0 || idx >= inst.numPlayers || seen[idx]) {
+                    dupOrMissing = true;
+                    failures++;
+                    System.out.println("FAIL getSortedOrder: invalid or duplicate index " + idx + " at position " + i);
+                    break;
+                }
+                seen[idx] = true;
+            }
+            if (!dupOrMissing) {
+                for (int i = 0; i < inst.numPlayers; i++) {
+                    if (!seen[i]) {
+                        dupOrMissing = true;
+                        failures++;
+                        System.out.println("FAIL getSortedOrder: missing index " + i);
+                        break;
+                    }
+                }
+            }
+            // Verify non-increasing order of scores
+            boolean nonIncreasing = true;
+            for (int i = 0; i < order.length - 1; i++) {
+                if (tournamentScores[order[i]] < tournamentScores[order[i + 1]]) {
+                    nonIncreasing = false;
+                    failures++;
+                    System.out.println("FAIL getSortedOrder: scores not non-increasing at positions " + i + "," + (i+1));
+                    break;
+                }
+            }
+            if (!dupOrMissing && nonIncreasing) {
+                System.out.println("PASS getSortedOrder integration test (all " + inst.numPlayers + " indices present, scores non-increasing)");
+            }
+        } catch (Throwable t) { failures++; System.out.println("FAIL getSortedOrder integration: " + t.getMessage()); }
+
         System.out.println(failures == 0 ? "ALL TESTS PASS" : ("FAILURES: " + failures));
         if (failures > 0)
             System.exit(1);
