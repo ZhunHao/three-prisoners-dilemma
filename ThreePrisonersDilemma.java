@@ -154,8 +154,7 @@ public class ThreePrisonersDilemma {
             if (n == 0)
                 return 0;
 
-            boolean anyDefected = (oppHistory1[n - 1] == 1) || (oppHistory2[n - 1] == 1);
-            if (anyDefected) {
+            if (anyDefected(n - 1, oppHistory1, oppHistory2)) {
                 if (Math.random() < q)
                     return 0; // forgive
                 return 1;     // retaliate
@@ -230,8 +229,7 @@ public class ThreePrisonersDilemma {
                 return 1;
             }
 
-            boolean prevEvent = (oppHistory1[n - 1] == 1) || (oppHistory2[n - 1] == 1);
-            if (prevEvent) {
+            if (anyDefected(n - 1, oppHistory1, oppHistory2)) {
                 defectionEvents++;
                 // This round is the first of `defectionEvents` punish rounds.
                 punishRemaining = defectionEvents - 1;
@@ -702,8 +700,8 @@ public class ThreePrisonersDilemma {
         int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
             if (n < 2)
                 return 0;
-            boolean prev = (oppHistory1[n - 1] == 1) || (oppHistory2[n - 1] == 1);
-            boolean prev2 = (oppHistory1[n - 2] == 1) || (oppHistory2[n - 2] == 1);
+            boolean prev = anyDefected(n - 1, oppHistory1, oppHistory2);
+            boolean prev2 = anyDefected(n - 2, oppHistory1, oppHistory2);
             return (prev && prev2) ? 1 : 0;
         }
     }
@@ -803,8 +801,8 @@ public class ThreePrisonersDilemma {
         int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
             if (n == 0)
                 return 0;
-            boolean prev = (oppHistory1[n - 1] == 1) || (oppHistory2[n - 1] == 1);
-            boolean prev2 = (n >= 2) && ((oppHistory1[n - 2] == 1) || (oppHistory2[n - 2] == 1));
+            boolean prev = anyDefected(n - 1, oppHistory1, oppHistory2);
+            boolean prev2 = (n >= 2) && anyDefected(n - 2, oppHistory1, oppHistory2);
             return (prev || prev2) ? 1 : 0;
         }
     }
@@ -869,7 +867,7 @@ public class ThreePrisonersDilemma {
                 return 0;
 
             int myLast = myHistory[n - 1];
-            boolean oppDefected = (oppHistory1[n - 1] == 1) || (oppHistory2[n - 1] == 1);
+            boolean oppDefected = anyDefected(n - 1, oppHistory1, oppHistory2);
 
             // Update opponent standing first (was their action justified?).
             boolean prevOppStanding = oppStanding;
