@@ -1,1 +1,12 @@
 *.class
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Build artifacts
+*.jar

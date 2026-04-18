@@ -24,6 +24,11 @@ public class ThreePrisonersDilemma {
             { { 8, 5 }, // payoffs when first player defects, second coops
                     { 5, 2 } } };// payoffs when first and second players defect
 
+    // Symbolic payoff values using Taha & Ghoneim (2021) notation — mirrors the
+    // matrix above so ZD formulas (EqualizerZDPlayer, ExtortionZDPlayer) read like the paper.
+    // T=temptation, R=mutual-coop reward, L/K=asymmetric mid tiers, P=mutual-defect punishment, S=sucker.
+    static final double T = 8, R = 6, L = 5, K = 3, P = 2, S = 0;
+
     /*
      * So payoff[i][j][k] represents the payoff to player 1 when the first
      * player's action is i, the second player's action is j, and the
@@ -292,8 +297,7 @@ public class ThreePrisonersDilemma {
     /** ZD equalizer: unilaterally pins opponents' combined expected payoff via a memory-one stochastic strategy. */
     class EqualizerZDPlayer extends Player {
 
-        // Payoff values: T=8, R=6, L=5, K=3, P=2, S=0
-        final double T = 8, R = 6, L = 5, K = 3, P = 2, S = 0;
+        // Payoff values T, R, L, K, P, S are inherited from ThreePrisonersDilemma.
 
         // Free parameters (chosen within valid bounds from the paper)
         final double pC2 = 0.9; // cooperate prob after CCC
@@ -382,8 +386,7 @@ public class ThreePrisonersDilemma {
     /** ZD extortion: enforces own payoff > chi × opponents' surplus above mutual defection baseline. */
     class ExtortionZDPlayer extends Player {
 
-        // Payoff values: T=8, R=6, L=5, K=3, P=2, S=0
-        final double T = 8, R = 6, L = 5, K = 3, P = 2, S = 0;
+        // Payoff values T, R, L, K, P, S are inherited from ThreePrisonersDilemma.
 
         // Extortion parameters (within valid bounds from paper Eq. 25-26)
         final double chi = 1.0; // extortion factor
@@ -631,6 +634,9 @@ public class ThreePrisonersDilemma {
         static final int IN_DIM = 7;
         static final int HIDDEN = 5;
 
+        // Sigmoid binary-classifier threshold: output >= 0.5 means defect.
+        static final double DEFECT_THRESHOLD = 0.5;
+
         final double[][] W1 = new double[IN_DIM][HIDDEN];
         final double[] b1 = new double[HIDDEN];
         final double[] W2 = new double[HIDDEN];
@@ -690,7 +696,7 @@ public class ThreePrisonersDilemma {
             if (n == 0)
                 return 0; // nice open, consistent with Axelrod EvolvedANN convention
             double prob = forward(features(n, myHistory, oppHistory1, oppHistory2));
-            return (prob >= 0.5) ? 1 : 0;
+            return (prob >= DEFECT_THRESHOLD) ? 1 : 0;
         }
     }
 
@@ -1399,112 +1405,81 @@ public class ThreePrisonersDilemma {
      * This procedure simulates a single match and returns the scores.
      */
     float[] scoresOfMatch(Player A, Player B, Player C, int rounds) {
-        int[] HistoryA = new int[rounds], HistoryB = new int[rounds], HistoryC = new int[rounds];
-        float ScoreA = 0, ScoreB = 0, ScoreC = 0;
+        int[] historyA = new int[rounds], historyB = new int[rounds], historyC = new int[rounds];
+        float scoreA = 0, scoreB = 0, scoreC = 0;
 
         for (int i = 0; i < rounds; i++) {
             // Slices are shared across the three selectAction calls this round; implementations must not mutate them.
-            int[] sliceA = Arrays.copyOf(HistoryA, i);
-            int[] sliceB = Arrays.copyOf(HistoryB, i);
-            int[] sliceC = Arrays.copyOf(HistoryC, i);
-            int PlayA = A.selectAction(i, sliceA, sliceB, sliceC);
-            int PlayB = B.selectAction(i, sliceB, sliceC, sliceA);
-            int PlayC = C.selectAction(i, sliceC, sliceA, sliceB);
-            ScoreA += payoff[PlayA][PlayB][PlayC];
-            ScoreB += payoff[PlayB][PlayC][PlayA];
-            ScoreC += payoff[PlayC][PlayA][PlayB];
-            HistoryA[i] = PlayA;
-            HistoryB[i] = PlayB;
-            HistoryC[i] = PlayC;
+            int[] sliceA = Arrays.copyOf(historyA, i);
+            int[] sliceB = Arrays.copyOf(historyB, i);
+            int[] sliceC = Arrays.copyOf(historyC, i);
+            int playA = A.selectAction(i, sliceA, sliceB, sliceC);
+            int playB = B.selectAction(i, sliceB, sliceC, sliceA);
+            int playC = C.selectAction(i, sliceC, sliceA, sliceB);
+            scoreA += payoff[playA][playB][playC];
+            scoreB += payoff[playB][playC][playA];
+            scoreC += payoff[playC][playA][playB];
+            historyA[i] = playA;
+            historyB[i] = playB;
+            historyC[i] = playC;
         }
-        float[] result = { ScoreA / rounds, ScoreB / rounds, ScoreC / rounds };
+        float[] result = { scoreA / rounds, scoreB / rounds, scoreC / rounds };
         return result;
     }
 
     /*
-     * The procedure makePlayer is used to reset each of the Players
-     * (strategies) in between matches. When you add your own strategy,
-     * you will need to add a new entry to makePlayer, and change numPlayers.
+     * Player registry — add a new entry here when you add a new strategy.
+     * numPlayers is auto-derived from the array length; no second edit needed.
+     * Order defines the player ID (0-based) used throughout the tournament engine.
+     * 28 zoo strategies + 8 exhibition strategies (Nostalgic, LaLaLand, FistBump,
+     * Xenolinguist, FiveHundredDays, MillersPlanet, PlanAB, BiancasBan).
      */
+    @SuppressWarnings("unchecked")
+    private final java.util.function.Supplier<Player>[] PLAYER_FACTORIES = new java.util.function.Supplier[] {
+        () -> new NicePlayer(),           //  0
+        () -> new NastyPlayer(),          //  1
+        () -> new RandomPlayer(),         //  2
+        () -> new TolerantPlayer(),       //  3
+        () -> new FreakyPlayer(),         //  4
+        () -> new T4TPlayer(),            //  5
+        () -> new GenerousTfTPlayer(),    //  6
+        () -> new MajorityRulePlayer(),   //  7
+        () -> new GradualPunisherPlayer(),//  8
+        () -> new EqualizerZDPlayer(),    //  9
+        () -> new ExtortionZDPlayer(),    // 10
+        () -> new AsylumPlayer(),         // 11
+        () -> new HallucinationPlayer(),  // 12
+        () -> new DrunkenPlayer(),        // 13
+        () -> new EvolvedANNPlayer(),     // 14
+        () -> new EvolvedANNNoisePlayer(),// 15
+        () -> new TitForTwoTatsPlayer(),  // 16
+        () -> new PavlovPlayer(),         // 17
+        () -> new GrimTriggerPlayer(),    // 18
+        () -> new TftSpitefulPlayer(),    // 19
+        () -> new SpitefulCCPlayer(),     // 20
+        () -> new HardTFTPlayer(),        // 21
+        () -> new OmegaTFTPlayer(),       // 22
+        () -> new ContriteTFTPlayer(),    // 23
+        () -> new AdaptivePavlovPlayer(), // 24
+        () -> new Mem2Player(),           // 25
+        () -> new BackStabberPlayer(),    // 26
+        () -> new DBSPlayer(),            // 27
+        () -> new NostalgicPlayer(),      // 28
+        () -> new LaLaLandPlayer(),       // 29
+        () -> new FistBumpPlayer(),       // 30
+        () -> new XenolinguistPlayer(),   // 31
+        () -> new FiveHundredDaysPlayer(),// 32
+        () -> new MillersPlanetPlayer(),  // 33
+        () -> new PlanABPlayer(),         // 34
+        () -> new BiancasBanPlayer()      // 35
+    };
 
-    int numPlayers = 36; // 28 zoo + 8 exhibition (Nostalgic, LaLaLand, FistBump, Xenolinguist, FiveHundredDays, MillersPlanet, PlanAB, BiancasBan)
+    int numPlayers = PLAYER_FACTORIES.length;
 
     Player makePlayer(int which) {
-        switch (which) {
-            case 0:
-                return new NicePlayer();
-            case 1:
-                return new NastyPlayer();
-            case 2:
-                return new RandomPlayer();
-            case 3:
-                return new TolerantPlayer();
-            case 4:
-                return new FreakyPlayer();
-            case 5:
-                return new T4TPlayer();
-            case 6:
-                return new GenerousTfTPlayer();
-            case 7:
-                return new MajorityRulePlayer();
-            case 8:
-                return new GradualPunisherPlayer();
-            case 9:
-                return new EqualizerZDPlayer();
-            case 10:
-                return new ExtortionZDPlayer();
-            case 11:
-                return new AsylumPlayer();
-            case 12:
-                return new HallucinationPlayer();
-            case 13:
-                return new DrunkenPlayer();
-            case 14:
-                return new EvolvedANNPlayer();
-            case 15:
-                return new EvolvedANNNoisePlayer();
-            case 16:
-                return new TitForTwoTatsPlayer();
-            case 17:
-                return new PavlovPlayer();
-            case 18:
-                return new GrimTriggerPlayer();
-            case 19:
-                return new TftSpitefulPlayer();
-            case 20:
-                return new SpitefulCCPlayer();
-            case 21:
-                return new HardTFTPlayer();
-            case 22:
-                return new OmegaTFTPlayer();
-            case 23:
-                return new ContriteTFTPlayer();
-            case 24:
-                return new AdaptivePavlovPlayer();
-            case 25:
-                return new Mem2Player();
-            case 26:
-                return new BackStabberPlayer();
-            case 27:
-                return new DBSPlayer();
-            case 28:
-                return new NostalgicPlayer();
-            case 29:
-                return new LaLaLandPlayer();
-            case 30:
-                return new FistBumpPlayer();
-            case 31:
-                return new XenolinguistPlayer();
-            case 32:
-                return new FiveHundredDaysPlayer();
-            case 33:
-                return new MillersPlanetPlayer();
-            case 34:
-                return new PlanABPlayer();
-            case 35:
-                return new BiancasBanPlayer();
-        }
-        throw new RuntimeException("Bad argument passed to makePlayer");
+        if (which < 0 || which >= PLAYER_FACTORIES.length)
+            throw new RuntimeException("Bad argument passed to makePlayer: " + which);
+        return PLAYER_FACTORIES[which].get();
     }
 
     /* Finally, the remaining code actually runs the tournament. */

@@ -99,6 +99,24 @@ make bench
 
 ---
 
+## Development
+
+All common workflows are wrapped in the Makefile:
+
+```bash
+make run                    # Compile + run one tournament
+make test                   # Compile + run all sanity checks and integration tests
+make bench                  # Benchmark over BENCH_N tournaments (default 1000)
+make bench BENCH_N=100      # Override benchmark tournament count
+make clean                  # Remove compiled .class files
+```
+
+The `bench` target compiles a copy of the source in a temp directory with `NUM_TOURNAMENTS` swapped in via `sed`, keeping the checked-in `ThreePrisonersDilemma.java` untouched.
+
+See [Intelligent_Agents_Assignment.md](Intelligent_Agents_Assignment.md) for the original assignment spec.
+
+---
+
 ## Scoring
 
 - Each player's score per tournament = sum of average payoffs across all matches played
