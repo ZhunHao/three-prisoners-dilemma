@@ -99,21 +99,46 @@ make bench
 
 ---
 
-## Results (100 tournaments)
+## Results (1000 tournaments)
 
 ```
 Rank  Player                    Avg Score   Win Points
-   1  EvolvedANNNoisePlayer      3575.67        3397
-   2  OmegaTFTPlayer             3575.20        3411
-   3  TftSpitefulPlayer          3573.95        3386
-   4  DBSPlayer                  3561.61        3057
-   5  GrimTriggerPlayer          3558.42        2951
-  ...
-  32  NastyPlayer                2245.34         500
-  33  ExtortionZDPlayer          2186.34         400
-  34  EqualizerZDPlayer          1904.16         299
-  35  RandomPlayer               1832.13         201
-  36  AsylumPlayer               1584.56         100
+   1  EvolvedANNNoisePlayer      3576.358       34199
+   2  OmegaTFTPlayer             3574.994       33892
+   3  TftSpitefulPlayer          3571.616       33244
+   4  DBSPlayer                  3560.053       30042
+   5  GrimTriggerPlayer          3559.528       29899
+   6  SpitefulCCPlayer           3556.533       28915
+   7  TitForTwoTatsPlayer        3555.105       28551
+   8  FiveHundredDaysPlayer      3554.923       28472
+   9  ContriteTFTPlayer          3551.673       27363
+  10  PlanABPlayer               3550.873       27117
+  11  T4TPlayer                  3550.444       26979
+  12  Mem2Player                 3549.923       26796
+  13  HardTFTPlayer              3549.294       26502
+  14  MajorityRulePlayer         3548.663       26412
+  15  MillersPlanetPlayer        3545.368       25366
+  16  FistBumpPlayer             3528.873       21566
+  17  AdaptivePavlovPlayer       3515.326       19569
+  18  TolerantPlayer             3509.717       18961
+  19  HallucinationPlayer        3508.383       18825
+  20  GenerousTfTPlayer          3489.650       17314
+  21  BiancasBanPlayer           3451.834       15752
+  22  GradualPunisherPlayer      3438.152       15041
+  23  LaLaLandPlayer             3421.704       14216
+  24  NostalgicPlayer            3367.814       13000
+  25  PavlovPlayer               3315.448       12007
+  26  NicePlayer                 3216.108       10951
+  27  BackStabberPlayer          3178.125       10049
+  28  EvolvedANNPlayer           3036.442        9000
+  29  FreakyPlayer               2713.032        8000
+  30  DrunkenPlayer              2416.940        6602
+  31  XenolinguistPlayer         2410.966        6398
+  32  NastyPlayer                2246.135        4999
+  33  ExtortionZDPlayer          2187.587        4001
+  34  EqualizerZDPlayer          1902.558        2992
+  35  RandomPlayer               1831.054        2008
+  36  AsylumPlayer               1586.424        1000
 ```
 
 ---
