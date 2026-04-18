@@ -38,17 +38,25 @@ Each match runs for a random number of rounds (90–110). Every unordered triple
 ### Research-Backed
 | Player | Source |
 |--------|--------|
-| GenerousTfT | Nowak & Sigmund 1993 — TFT with 10% forgiveness |
-| GradualPunisher | Beaufils et al. 1996 — Escalating punishment + peace signal |
-| GrimTrigger | Axelrod 1984 — Cooperate until first defection, then defect forever |
-| TftSpiteful | JASSS 2017 #1 — TFT with grim trigger after 2 defection events |
-| OmegaTFT | Slany & Kienreich 2000 — TFT + deadlock breaker + randomness detector |
-| AdaptivePavlov | Li 2007 — Classify opponents in first 6 rounds, respond per class |
-| BackStabber | Harper et al. 2024 — Cooperate until round 88, then defect |
-| EvolvedANN | Harper et al. 2017 — ANN trained offline via evolutionary algorithm |
-| ExtortionZD | Taha & Ghoneim 2021 — Zero-determinant extortion strategy |
-| EqualizerZD | Taha & Ghoneim 2021 — Zero-determinant equalizer |
-| + 9 more | See [PLAYERS.md](PLAYERS.md) |
+| GenerousTfTPlayer | Nowak & Sigmund 1993 — TFT with 10% forgiveness |
+| MajorityRulePlayer | Mathieu & Delahaye 2017 — Defect only if opponent's defections > cooperations |
+| TitForTwoTatsPlayer | Axelrod 1980 — Defect only after two consecutive opponent defections |
+| PavlovPlayer | Nowak & Sigmund 1993 — Win-Stay-Lose-Shift |
+| GradualPunisherPlayer | Beaufils et al. 1996 — Escalating punishment + peace signal |
+| GrimTriggerPlayer | Axelrod 1984 — Cooperate until first defection, then defect forever |
+| TftSpitefulPlayer | JASSS 2017 #1 — TFT with grim trigger after 2 defection events |
+| SpitefulCCPlayer | JASSS 2017 — Unconditional cooperate for 2 rounds, then Grim Trigger |
+| HardTFTPlayer | — Defect if opponent defected in either of the last 2 rounds |
+| ContriteTFTPlayer | Boerlijst et al. 1997 — TFT that tracks standing to avoid defection spirals |
+| OmegaTFTPlayer | Slany & Kienreich 2000 — TFT + deadlock breaker + randomness detector |
+| AdaptivePavlovPlayer | Li 2007 — Classify opponents in first 6 rounds, respond per class |
+| Mem2Player | — Adaptively switches between AllC, TFT, and AllD based on recent history |
+| DBSPlayer | Au & Nau 2006 — Flag opponents as untrusted after TFT deviation, then defect |
+| BackStabberPlayer | Harper et al. 2024 — Cooperate until round 88, then defect |
+| EvolvedANNPlayer | Harper et al. 2017 — ANN trained offline via evolutionary algorithm |
+| EvolvedANNNoisePlayer | Harper et al. 2017 — Same ANN with cooperation bias for noise robustness |
+| ExtortionZDPlayer | Taha & Ghoneim 2021 — Zero-determinant extortion strategy |
+| EqualizerZDPlayer | Taha & Ghoneim 2021 — Zero-determinant equalizer |
 
 ### Trolls (our own creations)
 | Player | What it does |
