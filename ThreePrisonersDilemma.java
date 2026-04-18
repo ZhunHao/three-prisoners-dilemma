@@ -1358,6 +1358,7 @@ public class ThreePrisonersDilemma {
         float ScoreA = 0, ScoreB = 0, ScoreC = 0;
 
         for (int i = 0; i < rounds; i++) {
+            // Slices are shared across the three selectAction calls this round; implementations must not mutate them.
             int[] sliceA = Arrays.copyOf(HistoryA, i);
             int[] sliceB = Arrays.copyOf(HistoryB, i);
             int[] sliceC = Arrays.copyOf(HistoryC, i);
