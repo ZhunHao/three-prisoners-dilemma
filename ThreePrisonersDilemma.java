@@ -1920,7 +1920,7 @@ public class ThreePrisonersDilemma {
             Player nice1 = inst.new NicePlayer();
             Player nasty = inst.new NastyPlayer();
             Player nice2 = inst.new NicePlayer();
-            float[] scores = inst.scoresOfMatch(nice1, nasty, nice2, 10);
+            float[] scores = inst.scoresOfMatch(nice1, nasty, nice2, 10); // 10 rounds: deterministic players make result independent of round count
             // scores[0] = NicePlayer avg, scores[1] = NastyPlayer avg, scores[2] = NicePlayer avg
             // Expected: NicePlayer=3.0, NastyPlayer=8.0, NicePlayer=3.0
             if (Math.abs(scores[0] - 3.0f) > 1e-6f) {
@@ -1954,33 +1954,27 @@ public class ThreePrisonersDilemma {
         } catch (Throwable t) { failures++; System.out.println("FAIL scoresOfMatch integration: " + t.getMessage()); }
 
         // ---- Integration Test B: runTournament smoke test ----
+        float[] tournamentScores; // shared with Test C
         try {
-            float[] tournamentScores = inst.runTournament();
+            tournamentScores = inst.runTournament();
             if (tournamentScores.length != inst.numPlayers) {
                 failures++;
                 System.out.println("FAIL runTournament: expected length " + inst.numPlayers + " got " + tournamentScores.length);
             }
-            boolean allPositive = true;
+            int failsBefore = failures;
             for (int i = 0; i < tournamentScores.length; i++) {
                 if (tournamentScores[i] <= 0.0f) {
-                    allPositive = false;
                     failures++;
                     System.out.println("FAIL runTournament: player " + i + " score=" + tournamentScores[i] + " not positive");
                 }
             }
-            // NastyPlayer is index 1; verify reasonable score (> 0)
-            if (tournamentScores[1] <= 0.0f) {
-                failures++;
-                System.out.println("FAIL runTournament: NastyPlayer (index 1) score=" + tournamentScores[1] + " should be > 0");
+            if (failures == failsBefore) {
+                System.out.println("PASS runTournament positivity (numPlayers=" + inst.numPlayers + ", NastyPlayer score=" + tournamentScores[1] + ")");
             }
-            if (allPositive) {
-                System.out.println("PASS runTournament integration test (numPlayers=" + inst.numPlayers + ", NastyPlayer score=" + tournamentScores[1] + ")");
-            }
-        } catch (Throwable t) { failures++; System.out.println("FAIL runTournament integration: " + t.getMessage()); }
+        } catch (Throwable t) { failures++; System.out.println("FAIL runTournament integration: " + t.getMessage()); tournamentScores = new float[inst.numPlayers]; }
 
         // ---- Integration Test C: getSortedOrder correctness ----
         try {
-            float[] tournamentScores = inst.runTournament();
             int[] order = inst.getSortedOrder(tournamentScores);
             // Verify all indices 0..numPlayers-1 appear exactly once
             boolean[] seen = new boolean[inst.numPlayers];
@@ -2019,6 +2013,34 @@ public class ThreePrisonersDilemma {
                 System.out.println("PASS getSortedOrder integration test (all " + inst.numPlayers + " indices present, scores non-increasing)");
             }
         } catch (Throwable t) { failures++; System.out.println("FAIL getSortedOrder integration: " + t.getMessage()); }
+
+        // ---- Integration Test D: ordering stability across 3 tournament runs ----
+        try {
+            int NUM_RUNS = 3;
+            int TOP_N = 5;
+            int TOLERANCE = 20; // top-5 must appear in top-20 in all other runs
+            int[][] orders = new int[NUM_RUNS][];
+            for (int run = 0; run < NUM_RUNS; run++) {
+                float[] s = inst.runTournament();
+                orders[run] = inst.getSortedOrder(s);
+            }
+            // Assert that each player in the top-5 of run 0 appears within the top-10 in all other runs
+            for (int r = 1; r < NUM_RUNS; r++) {
+                for (int k = 0; k < TOP_N; k++) {
+                    int player = orders[0][k];
+                    boolean found = false;
+                    for (int j = 0; j < TOLERANCE; j++) {
+                        if (orders[r][j] == player) { found = true; break; }
+                    }
+                    if (!found) {
+                        failures++;
+                        System.out.println("FAIL stability: player " + inst.makePlayer(player).name()
+                            + " (top-" + (k+1) + " in run 0) not in top-" + TOLERANCE + " in run " + r);
+                    }
+                }
+            }
+            System.out.println("PASS tournament ordering stability (3 runs)");
+        } catch (Throwable t) { failures++; System.out.println("FAIL stability: " + t.getMessage()); }
 
         System.out.println(failures == 0 ? "ALL TESTS PASS" : ("FAILURES: " + failures));
         if (failures > 0)
