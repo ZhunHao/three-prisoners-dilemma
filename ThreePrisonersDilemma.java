@@ -573,9 +573,12 @@ public class ThreePrisonersDilemma {
      * or forget to count down its punishment/calm phases.
      */
     class DrunkenPlayer extends GradualPunisherPlayer {
+        static final double MAX_DRUNK_CHANCE   = 0.8;
+        static final double ROUNDS_NORMALIZER  = 100.0;
+
         int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
             // Probability of random action increases from 0% at n=0 to ~80% at n>=80
-            double drunkChance = Math.min(0.8, n / 100.0);
+            double drunkChance = Math.min(MAX_DRUNK_CHANCE, n / ROUNDS_NORMALIZER);
             if (Math.random() < drunkChance) {
                 return (Math.random() < 0.5) ? 0 : 1;
             }
@@ -1074,12 +1077,18 @@ public class ThreePrisonersDilemma {
      *   Epilogue (109):    Cooperate unconditionally. The knowing smile.
      */
     class LaLaLandPlayer extends Player {
+        static final int WINTER1_END   = 20;   // exclusive — rounds 0-19
+        static final int SPRING_END    = 45;   // exclusive — rounds 20-44
+        static final int SUMMER_END    = 70;   // exclusive — rounds 45-69
+        static final int FALL_END      = 95;   // exclusive — rounds 70-94
+        static final int EPILOGUE      = 109;  // the final round
+
         int phase(int n) {
-            if (n == 109) return 5;
-            if (n < 20) return 0;
-            if (n < 45) return 1;
-            if (n < 70) return 2;
-            if (n < 95) return 3;
+            if (n == EPILOGUE) return 5;
+            if (n < WINTER1_END) return 0;
+            if (n < SPRING_END) return 1;
+            if (n < SUMMER_END) return 2;
+            if (n < FALL_END) return 3;
             return 4;
         }
 
@@ -1093,7 +1102,7 @@ public class ThreePrisonersDilemma {
                 case 2: // Summer — cooperate unless BOTH defected last round
                     return (oppHistory1[n - 1] == 1 && oppHistory2[n - 1] == 1) ? 1 : 0;
                 case 3: // Fall — grim within season
-                    for (int i = 70; i < n; i++) {
+                    for (int i = SUMMER_END; i < n; i++) {
                         if (anyDefected(i, oppHistory1, oppHistory2)) return 1;
                     }
                     return 0;
