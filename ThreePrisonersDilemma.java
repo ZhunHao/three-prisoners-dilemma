@@ -52,6 +52,13 @@ public class ThreePrisonersDilemma {
         final boolean anyDefected(int r, int[] opp1, int[] opp2) {
             return opp1[r] == 1 || opp2[r] == 1;
         }
+
+        // Fraction of rounds 0..n-1 where hist[] == 0 (cooperation). Returns 1.0 when n==0.
+        final double coopRate(int[] hist, int n) {
+            int coops = 0;
+            for (int i = 0; i < n; i++) if (hist[i] == 0) coops++;
+            return n == 0 ? 1.0 : (double) coops / n;
+        }
     }
 
     /* Here are four simple strategies: */
@@ -636,15 +643,9 @@ public class ThreePrisonersDilemma {
 
         double[] features(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
             double f1 = n / 100.0;
-            int myCoop = 0, op1Coop = 0, op2Coop = 0;
-            for (int i = 0; i < n; i++) {
-                if (myHistory[i] == 0) myCoop++;
-                if (oppHistory1[i] == 0) op1Coop++;
-                if (oppHistory2[i] == 0) op2Coop++;
-            }
-            double f2 = (double) myCoop / n;
-            double f3 = (double) op1Coop / n;
-            double f4 = (double) op2Coop / n;
+            double f2 = coopRate(myHistory, n);
+            double f3 = coopRate(oppHistory1, n);
+            double f4 = coopRate(oppHistory2, n);
             double f5 = myHistory[n - 1];
             double f6 = oppHistory1[n - 1];
             double f7 = oppHistory2[n - 1];
