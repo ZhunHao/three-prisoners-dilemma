@@ -65,6 +65,7 @@ public class ThreePrisonersDilemma {
 
     /* Here are four simple strategies: */
 
+    /** Always cooperates unconditionally every round. */
     class NicePlayer extends Player {
         // NicePlayer always cooperates
         int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
@@ -72,6 +73,7 @@ public class ThreePrisonersDilemma {
         }
     }
 
+    /** Always defects unconditionally every round. */
     class NastyPlayer extends Player {
         // NastyPlayer always defects
         int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
@@ -79,6 +81,7 @@ public class ThreePrisonersDilemma {
         }
     }
 
+    /** Independently cooperates or defects with equal probability each round. */
     class RandomPlayer extends Player {
         // RandomPlayer randomly picks his action each time
         int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
@@ -89,6 +92,7 @@ public class ThreePrisonersDilemma {
         }
     }
 
+    /** Defects only when opponents' combined defection count exceeds their combined cooperation count. */
     class TolerantPlayer extends Player {
         // TolerantPlayer looks at his opponents' histories, and only defects
         // if at least half of the other players' actions have been defects
@@ -114,6 +118,7 @@ public class ThreePrisonersDilemma {
         }
     }
 
+    /** Commits at match start to either always cooperate or always defect, chosen randomly. */
     class FreakyPlayer extends Player {
         // FreakyPlayer determines, at the start of the match,
         // either to always be nice or always be nasty.
@@ -132,6 +137,7 @@ public class ThreePrisonersDilemma {
         }
     }
 
+    /** Tit-for-Tat under set-union retaliation: defects if either opponent defected last round. */
     class T4TPlayer extends Player {
         // Canonical 3-player TFT: copy opponents' last moves under set-union
         // retaliation. Cooperate iff BOTH opponents cooperated last round.
@@ -156,6 +162,7 @@ public class ThreePrisonersDilemma {
      * - Designed to escape mutual-defection spirals under noise without being
      *   exploitable by persistent defectors.
      */
+    /** Generous TfT: retaliates with probability 0.9, forgiving with probability 0.1 (Nowak & Sigmund 1993). */
     class GenerousTfTPlayer extends Player {
         final double q = 0.1;
 
@@ -184,6 +191,7 @@ public class ThreePrisonersDilemma {
      *   over full history. Cooperate only if both pass; otherwise defect.
      * - Ties go to cooperate (consistent with soft_majo definition).
      */
+    /** Soft majority: cooperates only when both opponents' cooperation rates meet or exceed 50%. */
     class MajorityRulePlayer extends Player {
         int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
             if (n == 0)
@@ -217,6 +225,7 @@ public class ThreePrisonersDilemma {
      *
      * State: punishRemaining, calmRemaining, defectionEvents.
      */
+    /** Gradual: punishes the k-th defection event with k defect rounds followed by 2 calm cooperation rounds. */
     class GradualPunisherPlayer extends Player {
         int punishRemaining = 0;
         int calmRemaining = 0;
@@ -280,6 +289,7 @@ public class ThreePrisonersDilemma {
      * dCD = prob cooperate after I defected, one cooperated one defected
      * dDD = prob cooperate after I defected, both defected (= pD0)
      */
+    /** ZD equalizer: unilaterally pins opponents' combined expected payoff via a memory-one stochastic strategy. */
     class EqualizerZDPlayer extends Player {
 
         // Payoff values: T=8, R=6, L=5, K=3, P=2, S=0
@@ -369,6 +379,7 @@ public class ThreePrisonersDilemma {
      * The cooperation probabilities are fully determined by chi and phi.
      * pD0 is always 0 in the extortion strategy (never cooperate after DDD).
      */
+    /** ZD extortion: enforces own payoff > chi × opponents' surplus above mutual defection baseline. */
     class ExtortionZDPlayer extends Player {
 
         // Payoff values: T=8, R=6, L=5, K=3, P=2, S=0
@@ -465,6 +476,7 @@ public class ThreePrisonersDilemma {
      * - vs RandomPlayer: mixed behaviour — punishes cooperative streaks.
      * - An "insane" strategy that inverts the logic of rational play.
      */
+    /** Inverted Gradual: punishes cooperation with escalating defection and rewards defection with cooperation. */
     class AsylumPlayer extends Player {
         int punishCount = 0; // remaining rounds of punishment (defection)
         int calmCount = 0; // remaining rounds of calm (cooperation after punishment)
@@ -539,6 +551,7 @@ public class ThreePrisonersDilemma {
      * It acts like a player with sporadic amnesia/hallucinations, breaking
      * fragile cooperative patterns.
      */
+    /** TfT against a randomly chosen past round rather than the most recent one. */
     class HallucinationPlayer extends Player {
         int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
             // Round 0: always cooperate initially
@@ -572,6 +585,7 @@ public class ThreePrisonersDilemma {
      * meaning it might completely ignore defections that happen while it's drunk,
      * or forget to count down its punishment/calm phases.
      */
+    /** Gradual Punisher that acts randomly with linearly increasing probability, reaching 80% by round 80. */
     class DrunkenPlayer extends GradualPunisherPlayer {
         static final double MAX_DRUNK_CHANCE   = 0.8;
         static final double ROUNDS_NORMALIZER  = 100.0;
@@ -603,6 +617,7 @@ public class ThreePrisonersDilemma {
      * against a mixed opponent pool. The flat weight vector is laid out as
      * W1 (7x5) then b1 (5) then W2 (5) then b2 (1), for 46 total parameters.
      */
+    /** Feed-forward ANN with champion weights evolved against a mixed opponent pool (Harper et al. 2017). */
     class EvolvedANNPlayer extends Player {
         // Flat weight vector: 7*5 (W1) + 5 (b1) + 5 (W2) + 1 (b2) = 46 floats.
         static final double[] CHAMPION_WEIGHTS = {
@@ -689,6 +704,7 @@ public class ThreePrisonersDilemma {
      * output bias b2, which lowers the sigmoid output for ambiguous inputs and
      * mirrors what training under 5% action-flip noise produces.
      */
+    /** EvolvedANN with a cooperation-biased output offset, mimicking training under 5% action-flip noise. */
     class EvolvedANNNoisePlayer extends EvolvedANNPlayer {
         static final double COOP_BIAS = 1.0; // subtract from b2; larger => more forgiving
 
@@ -701,6 +717,7 @@ public class ThreePrisonersDilemma {
     // =========================================================
     // STRATEGY: Tit-for-Two-Tats (TFTT, Axelrod 1980)
     // =========================================================
+    /** Defects only after two consecutive rounds where at least one opponent defected (Axelrod 1980). */
     class TitForTwoTatsPlayer extends Player {
         // Defect only after two consecutive rounds with >=1 opponent defection.
         int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
@@ -715,6 +732,7 @@ public class ThreePrisonersDilemma {
     // =========================================================
     // STRATEGY: Pavlov / Win-Stay-Lose-Shift (Nowak & Sigmund 1993)
     // =========================================================
+    /** Win-Stay-Lose-Shift: repeats last action when payoff ≥ R, switches otherwise (Nowak & Sigmund 1993). */
     class PavlovPlayer extends Player {
         // Win threshold = R = 6 (payoff for all-cooperate).
         int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
@@ -732,6 +750,7 @@ public class ThreePrisonersDilemma {
     // =========================================================
     // STRATEGY: Grim Trigger / Spiteful (Axelrod 1984)
     // =========================================================
+    /** Cooperates until any opponent defects once, then defects forever. */
     class GrimTriggerPlayer extends Player {
         // Cooperate until ANY opponent defects, then defect forever.
         boolean triggered = false;
@@ -752,6 +771,7 @@ public class ThreePrisonersDilemma {
     // =========================================================
     // STRATEGY: tft_spiteful — Mathieu & Delahaye JASSS 2017 (#1 overall)
     // =========================================================
+    /** TfT with a spiteful trigger: switches to permanent defection after two consecutive defection events. */
     class TftSpitefulPlayer extends Player {
         // TFT normally; after two consecutive defection events, switch to AllD.
         boolean triggered = false;
@@ -776,6 +796,7 @@ public class ThreePrisonersDilemma {
     // =========================================================
     // STRATEGY: spiteful_cc — JASSS 2017
     // =========================================================
+    /** Cooperates unconditionally for the first two rounds, then plays Grim Trigger for the rest of the match. */
     class SpitefulCCPlayer extends Player {
         // Play CC for the first two rounds, then Grim Trigger.
         boolean triggered = false;
@@ -803,6 +824,7 @@ public class ThreePrisonersDilemma {
     // =========================================================
     // STRATEGY: Hard TFT — defect if defection in either of last 2 rounds
     // =========================================================
+    /** Defects if either opponent defected in either of the last two rounds. */
     class HardTFTPlayer extends Player {
         int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
             if (n == 0)
@@ -816,6 +838,7 @@ public class ThreePrisonersDilemma {
     // =========================================================
     // STRATEGY: Omega TFT — Slany & Kienreich 2000
     // =========================================================
+    /** TfT with deadlock-breaking cooperation recovery and randomness-detection permanent defection (Slany & Kienreich 2000). */
     class OmegaTFTPlayer extends Player {
         static final int DEADLOCK_THRESHOLD = 3;
         static final int RANDOMNESS_THRESHOLD = 8;
@@ -864,6 +887,7 @@ public class ThreePrisonersDilemma {
     // =========================================================
     // STRATEGY: Contrite TFT — Boerlijst, Nowak, Sigmund 1997
     // =========================================================
+    /** TfT with contrition: cooperates after its own unjustified defection to prevent retaliation spirals. */
     class ContriteTFTPlayer extends Player {
         boolean myStanding = true;
         boolean oppStanding = true;
@@ -895,6 +919,7 @@ public class ThreePrisonersDilemma {
     // =========================================================
     // STRATEGY: Adaptive Pavlov — Li 2007 meta-classifier
     // =========================================================
+    /** Classifies each opponent as AllC, AllD, TFT, or random after 6 rounds and responds optimally to each type. */
     class AdaptivePavlovPlayer extends Player {
         static final int CLASSIFY_ROUNDS = 6;
 
@@ -936,6 +961,7 @@ public class ThreePrisonersDilemma {
     // =========================================================
     // STRATEGY: mem2 — meta-classifier over {AllC, TFT, AllD}
     // =========================================================
+    /** TfT with windowed cooperation-rate thresholds: always-C when rate > 75%, always-D when < 25%. */
     class Mem2Player extends Player {
         static final int WINDOW = 10;
 
@@ -961,6 +987,7 @@ public class ThreePrisonersDilemma {
     // =========================================================
     // STRATEGY: BackStabber — end-game defector (Harper et al. 2024)
     // =========================================================
+    /** Cooperates until round 88, then defects every remaining round. */
     class BackStabberPlayer extends Player {
         static final int DEFECT_FROM = 88;
 
@@ -981,6 +1008,7 @@ public class ThreePrisonersDilemma {
      * - If >= 3 deviations in the last 10 rounds, flag opponent untrusted.
      * - Defect if EITHER opponent is untrusted; else TFT.
      */
+    /** TfT until either opponent accumulates ≥3 deviations from TFT in the last 10 rounds, then defects. */
     class DBSPlayer extends Player {
         static final int WINDOW = 10;
         static final int PERSIST = 3;
@@ -1025,6 +1053,7 @@ public class ThreePrisonersDilemma {
      * Stays in the dream through the final round (no endgame defection).
      * Fully deterministic.
      */
+    /** Cooperates with opponents whose golden cooperation era (≥3 consecutive C) remains unbroken by recent defection. */
     class NostalgicPlayer extends Player {
         int longestCoopStreak(int[] h) {
             int best = 0, cur = 0;
@@ -1076,6 +1105,7 @@ public class ThreePrisonersDilemma {
      *   Winter 2 (95-108): TFT. Resigned, seasoned by history.
      *   Epilogue (109):    Cooperate unconditionally. The knowing smile.
      */
+    /** Follows a six-chapter seasonal arc from TfT through always-C, selective cooperation, Grim, and back to TfT. */
     class LaLaLandPlayer extends Player {
         static final int WINTER1_END   = 20;   // exclusive — rounds 0-19
         static final int SPRING_END    = 45;   // exclusive — rounds 20-44
@@ -1128,6 +1158,7 @@ public class ThreePrisonersDilemma {
      * in 3+ of the last 5 rounds, grief switch to permanent defect. Round
      * 109: cooperate iff the partner is still active (stay on Erid).
      */
+    /** Locks in the first opponent reaching 5 mutual-coop rounds as a partner and mirrors them, ignoring the third. */
     class FistBumpPlayer extends Player {
         // Returns 0 or 1 for the partner opponent, or -1 if no partner yet.
         int findPartner(int n, int[] myHistory, int[] opp1, int[] opp2) {
@@ -1193,6 +1224,7 @@ public class ThreePrisonersDilemma {
      * per-opponent rule says defect. No re-classification — the experiment
      * is done.
      */
+    /** Runs a 6-round C/D probe, then classifies each opponent as Defector/Cooperator/Reactive and commits permanently. */
     class XenolinguistPlayer extends Player {
         static final int CLASS_DEFECTOR = 0;
         static final int CLASS_COOPERATOR = 1;
@@ -1243,6 +1275,7 @@ public class ThreePrisonersDilemma {
      * Any defection in the first ~10 rounds is fatal to the dream. Tom's
      * impossible standard: anything less than perfect is a betrayal.
      */
+    /** Cooperates only while both opponents' cumulative cooperation rates have never dropped below 90%. */
     class FiveHundredDaysPlayer extends Player {
         // Was either opponent's cumulative cooperation rate ever below 90%
         // at any prior round? Integer math: rate < 0.9 iff 10*coops < 9*t.
@@ -1274,6 +1307,7 @@ public class ThreePrisonersDilemma {
      * match can never be reacted to; opponents who defect at the end
      * go unpunished. Cooper watching years-old videos from home.
      */
+    /** Plays TfT with a 7-round lag on opponent signals, cooperating until delayed defection information arrives. */
     class MillersPlanetPlayer extends Player {
         static final int LAG = 7;
 
@@ -1295,6 +1329,7 @@ public class ThreePrisonersDilemma {
      * on Plan A for the rest of the match. Captures Professor Brand's
      * deception — the mission was always a survival strategy.
      */
+    /** TfT (Plan A) until round-50 cumulative score < 200, then permanently defects (Plan B). */
     class PlanABPlayer extends Player {
         int scoreFirstFifty(int[] me, int[] o1, int[] o2) {
             int total = 0;
@@ -1329,6 +1364,7 @@ public class ThreePrisonersDilemma {
      * irrelevant — she's gated by Kat. Captures the film's setup:
      * "Bianca can date only when Kat does."
      */
+    /** Gates all cooperation on whether the designated "Kat" opponent cooperated in at least one of the last 3 rounds. */
     class BiancasBanPlayer extends Player {
         // Return 0 or 1 for Kat, or -1 if not yet determined.
         int findKat(int n, int[] opp1, int[] opp2) {
