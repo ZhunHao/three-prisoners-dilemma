@@ -1,3 +1,5 @@
+import java.util.Arrays;
+
 public class ThreePrisonersDilemma {
 
     /*
@@ -1352,31 +1354,24 @@ public class ThreePrisonersDilemma {
      * This procedure simulates a single match and returns the scores.
      */
     float[] scoresOfMatch(Player A, Player B, Player C, int rounds) {
-        int[] HistoryA = new int[0], HistoryB = new int[0], HistoryC = new int[0];
+        int[] HistoryA = new int[rounds], HistoryB = new int[rounds], HistoryC = new int[rounds];
         float ScoreA = 0, ScoreB = 0, ScoreC = 0;
 
         for (int i = 0; i < rounds; i++) {
-            int PlayA = A.selectAction(i, HistoryA, HistoryB, HistoryC);
-            int PlayB = B.selectAction(i, HistoryB, HistoryC, HistoryA);
-            int PlayC = C.selectAction(i, HistoryC, HistoryA, HistoryB);
-            ScoreA = ScoreA + payoff[PlayA][PlayB][PlayC];
-            ScoreB = ScoreB + payoff[PlayB][PlayC][PlayA];
-            ScoreC = ScoreC + payoff[PlayC][PlayA][PlayB];
-            HistoryA = extendIntArray(HistoryA, PlayA);
-            HistoryB = extendIntArray(HistoryB, PlayB);
-            HistoryC = extendIntArray(HistoryC, PlayC);
+            int[] sliceA = Arrays.copyOf(HistoryA, i);
+            int[] sliceB = Arrays.copyOf(HistoryB, i);
+            int[] sliceC = Arrays.copyOf(HistoryC, i);
+            int PlayA = A.selectAction(i, sliceA, sliceB, sliceC);
+            int PlayB = B.selectAction(i, sliceB, sliceC, sliceA);
+            int PlayC = C.selectAction(i, sliceC, sliceA, sliceB);
+            ScoreA += payoff[PlayA][PlayB][PlayC];
+            ScoreB += payoff[PlayB][PlayC][PlayA];
+            ScoreC += payoff[PlayC][PlayA][PlayB];
+            HistoryA[i] = PlayA;
+            HistoryB[i] = PlayB;
+            HistoryC[i] = PlayC;
         }
         float[] result = { ScoreA / rounds, ScoreB / rounds, ScoreC / rounds };
-        return result;
-    }
-
-    // This is a helper function needed by scoresOfMatch.
-    int[] extendIntArray(int[] arr, int next) {
-        int[] result = new int[arr.length + 1];
-        for (int i = 0; i < arr.length; i++) {
-            result[i] = arr[i];
-        }
-        result[result.length - 1] = next;
         return result;
     }
 
