@@ -47,6 +47,11 @@ public class ThreePrisonersDilemma {
             String result = getClass().getName();
             return result.substring(result.indexOf('$') + 1);
         }
+
+        // True iff either opponent defected in round r.
+        final boolean anyDefected(int r, int[] opp1, int[] opp2) {
+            return opp1[r] == 1 || opp2[r] == 1;
+        }
     }
 
     /* Here are four simple strategies: */
@@ -124,7 +129,7 @@ public class ThreePrisonersDilemma {
         int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
             if (n == 0)
                 return 0;
-            if (oppHistory1[n - 1] == 1 || oppHistory2[n - 1] == 1)
+            if (anyDefected(n - 1, oppHistory1, oppHistory2))
                 return 1;
             return 0;
         }
@@ -715,7 +720,7 @@ public class ThreePrisonersDilemma {
             int o1 = oppHistory1[n - 1];
             int o2 = oppHistory2[n - 1];
             int lastPayoff = payoff[my][o1][o2];
-            boolean won = lastPayoff >= 6;
+            boolean won = lastPayoff >= PAYOFF_R;
             return won ? my : (1 - my);
         }
     }
@@ -732,7 +737,7 @@ public class ThreePrisonersDilemma {
                 return 1;
             if (n == 0)
                 return 0;
-            if (oppHistory1[n - 1] == 1 || oppHistory2[n - 1] == 1) {
+            if (anyDefected(n - 1, oppHistory1, oppHistory2)) {
                 triggered = true;
                 return 1;
             }
@@ -753,14 +758,14 @@ public class ThreePrisonersDilemma {
             if (n == 0)
                 return 0;
             if (n >= 2) {
-                boolean prev = (oppHistory1[n - 1] == 1) || (oppHistory2[n - 1] == 1);
-                boolean prev2 = (oppHistory1[n - 2] == 1) || (oppHistory2[n - 2] == 1);
+                boolean prev = anyDefected(n - 1, oppHistory1, oppHistory2);
+                boolean prev2 = anyDefected(n - 2, oppHistory1, oppHistory2);
                 if (prev && prev2) {
                     triggered = true;
                     return 1;
                 }
             }
-            return (oppHistory1[n - 1] == 1 || oppHistory2[n - 1] == 1) ? 1 : 0;
+            return anyDefected(n - 1, oppHistory1, oppHistory2) ? 1 : 0;
         }
     }
 
@@ -782,7 +787,7 @@ public class ThreePrisonersDilemma {
             // subsequent calls short-circuit above, so the loop is effectively
             // amortised O(1) per match.
             for (int i = 0; i < n; i++) {
-                if (oppHistory1[i] == 1 || oppHistory2[i] == 1) {
+                if (anyDefected(i, oppHistory1, oppHistory2)) {
                     triggered = true;
                     return 1;
                 }
@@ -911,7 +916,7 @@ public class ThreePrisonersDilemma {
             if (n == 0)
                 return 0;
             if (n < CLASSIFY_ROUNDS)
-                return (oppHistory1[n - 1] == 1 || oppHistory2[n - 1] == 1) ? 1 : 0;
+                return anyDefected(n - 1, oppHistory1, oppHistory2) ? 1 : 0;
 
             int c1 = classifyOpp(n, myHistory, oppHistory1);
             int c2 = classifyOpp(n, myHistory, oppHistory2);
@@ -920,7 +925,7 @@ public class ThreePrisonersDilemma {
                 return 1;
             if ((c1 == 0 || c1 == 2) && (c2 == 0 || c2 == 2))
                 return 0;
-            return (oppHistory1[n - 1] == 1 || oppHistory2[n - 1] == 1) ? 1 : 0;
+            return anyDefected(n - 1, oppHistory1, oppHistory2) ? 1 : 0;
         }
     }
 
@@ -945,7 +950,7 @@ public class ThreePrisonersDilemma {
                 return 0;
             if (rate < 0.25)
                 return 1;
-            return (oppHistory1[n - 1] == 1 || oppHistory2[n - 1] == 1) ? 1 : 0;
+            return anyDefected(n - 1, oppHistory1, oppHistory2) ? 1 : 0;
         }
     }
 
@@ -996,7 +1001,7 @@ public class ThreePrisonersDilemma {
 
             if (untrusted1 || untrusted2)
                 return 1;
-            return (oppHistory1[n - 1] == 1 || oppHistory2[n - 1] == 1) ? 1 : 0;
+            return anyDefected(n - 1, oppHistory1, oppHistory2) ? 1 : 0;
         }
     }
 
@@ -1081,18 +1086,18 @@ public class ThreePrisonersDilemma {
             switch (phase(n)) {
                 case 0: // Winter 1 — TFT
                     if (n == 0) return 0;
-                    return (oppHistory1[n - 1] == 1 || oppHistory2[n - 1] == 1) ? 1 : 0;
+                    return anyDefected(n - 1, oppHistory1, oppHistory2) ? 1 : 0;
                 case 1: // Spring — always cooperate
                     return 0;
                 case 2: // Summer — cooperate unless BOTH defected last round
                     return (oppHistory1[n - 1] == 1 && oppHistory2[n - 1] == 1) ? 1 : 0;
                 case 3: // Fall — grim within season
                     for (int i = 70; i < n; i++) {
-                        if (oppHistory1[i] == 1 || oppHistory2[i] == 1) return 1;
+                        if (anyDefected(i, oppHistory1, oppHistory2)) return 1;
                     }
                     return 0;
                 case 4: // Winter 2 — TFT
-                    return (oppHistory1[n - 1] == 1 || oppHistory2[n - 1] == 1) ? 1 : 0;
+                    return anyDefected(n - 1, oppHistory1, oppHistory2) ? 1 : 0;
                 case 5: // Epilogue — knowing smile
                     return 0;
             }
@@ -1153,7 +1158,7 @@ public class ThreePrisonersDilemma {
 
             // Before partner is locked in: TFT
             if (partner == -1) {
-                return (oppHistory1[n - 1] == 1 || oppHistory2[n - 1] == 1) ? 1 : 0;
+                return anyDefected(n - 1, oppHistory1, oppHistory2) ? 1 : 0;
             }
 
             // After partner locked in: mirror partner, ignore non-partner,
@@ -1265,7 +1270,7 @@ public class ThreePrisonersDilemma {
         int selectAction(int n, int[] myHistory, int[] oppHistory1, int[] oppHistory2) {
             if (n < LAG) return 0; // no signal yet
             int t = n - LAG;
-            return (oppHistory1[t] == 1 || oppHistory2[t] == 1) ? 1 : 0;
+            return anyDefected(t, oppHistory1, oppHistory2) ? 1 : 0;
         }
     }
 
@@ -1298,7 +1303,7 @@ public class ThreePrisonersDilemma {
             if (n == 0) return 0;
             if (planBRevealed(n, myHistory, oppHistory1, oppHistory2)) return 1;
             // Plan A: TFT (set-union retaliation)
-            return (oppHistory1[n - 1] == 1 || oppHistory2[n - 1] == 1) ? 1 : 0;
+            return anyDefected(n - 1, oppHistory1, oppHistory2) ? 1 : 0;
         }
     }
 
@@ -1467,6 +1472,13 @@ public class ThreePrisonersDilemma {
     // Set number of tournaments to average over
     static final int NUM_TOURNAMENTS = 100;
 
+    // Match length is drawn uniformly from [MATCH_ROUNDS_MIN, MATCH_ROUNDS_MIN + MATCH_ROUNDS_RANGE]
+    static final int MATCH_ROUNDS_MIN   = 90;
+    static final int MATCH_ROUNDS_RANGE = 20;
+
+    // payoff[0][0][0]: all-cooperate score (used as Pavlov win threshold)
+    static final int PAYOFF_R = 6;
+
     public static void main(String[] args) {
         if (args.length > 0 && args[0].equals("--test")) {
             mainTest();
@@ -1528,7 +1540,7 @@ public class ThreePrisonersDilemma {
                     Player A = makePlayer(i);
                     Player B = makePlayer(j);
                     Player C = makePlayer(k);
-                    int rounds = 90 + (int) Math.rint(20 * Math.random());
+                    int rounds = MATCH_ROUNDS_MIN + (int) Math.rint(MATCH_ROUNDS_RANGE * Math.random());
                     float[] matchResults = scoresOfMatch(A, B, C, rounds);
                     totalScore[i] += matchResults[0];
                     totalScore[j] += matchResults[1];
@@ -1790,6 +1802,123 @@ public class ThreePrisonersDilemma {
             if (dbs.selectAction(6, myHist, random1, allC) != 1) { failures++; System.out.println("FAIL DBS flag untrusted"); }
             System.out.println("PASS DBS");
         } catch (Throwable t) { failures++; System.out.println("FAIL DBS construct: " + t.getMessage()); }
+
+        // ---- NostalgicPlayer ----
+        try {
+            NostalgicPlayer nos = inst.new NostalgicPlayer();
+            if (nos.selectAction(0, new int[0], new int[0], new int[0]) != 0) { failures++; System.out.println("FAIL Nostalgic r0"); }
+            // Neither has golden era: cooperate by default
+            if (nos.selectAction(3, new int[]{0,0,0}, new int[]{1,1,1}, new int[]{1,1,1}) != 0) { failures++; System.out.println("FAIL Nostalgic no-era default coop"); }
+            // Both have golden era and still romantic: cooperate
+            int[] golden = {0,0,0,1,1};
+            if (nos.selectAction(5, new int[]{0,0,0,0,0}, golden, golden) != 0) { failures++; System.out.println("FAIL Nostalgic both-romantic coop"); }
+            // One romantic, one cracked (3+ defects in last 5): defect
+            int[] cracked = {0,0,0,1,1,1};
+            if (nos.selectAction(6, new int[]{0,0,0,0,0,0}, new int[]{0,0,0,0,1,1}, cracked) != 1) { failures++; System.out.println("FAIL Nostalgic one-cracked defect"); }
+            System.out.println("PASS NostalgicPlayer");
+        } catch (Throwable t) { failures++; System.out.println("FAIL Nostalgic: " + t.getMessage()); }
+
+        // ---- LaLaLandPlayer ----
+        try {
+            LaLaLandPlayer ll = inst.new LaLaLandPlayer();
+            if (ll.selectAction(0, new int[0], new int[0], new int[0]) != 0) { failures++; System.out.println("FAIL LaLaLand r0 winter TFT"); }
+            // Spring (n=22): always cooperate
+            int[] h22 = new int[22];
+            if (ll.selectAction(22, h22, h22, h22) != 0) { failures++; System.out.println("FAIL LaLaLand spring coop"); }
+            // Summer (n=50): cooperate unless BOTH defected last round
+            int[] h50 = new int[50];
+            int[] h50d = new int[50]; h50d[49] = 1;
+            if (ll.selectAction(50, h50, h50d, h50) != 0) { failures++; System.out.println("FAIL LaLaLand summer one-defect should coop"); }
+            if (ll.selectAction(50, h50, h50d, h50d) != 1) { failures++; System.out.println("FAIL LaLaLand summer both-defect should defect"); }
+            // Epilogue (n=109): always cooperate regardless of history
+            int[] h109 = new int[109]; for (int i = 0; i < 109; i++) h109[i] = 1;
+            if (ll.selectAction(109, h109, h109, h109) != 0) { failures++; System.out.println("FAIL LaLaLand epilogue coop"); }
+            System.out.println("PASS LaLaLandPlayer");
+        } catch (Throwable t) { failures++; System.out.println("FAIL LaLaLand: " + t.getMessage()); }
+
+        // ---- FistBumpPlayer ----
+        try {
+            FistBumpPlayer fb = inst.new FistBumpPlayer();
+            if (fb.selectAction(0, new int[0], new int[0], new int[0]) != 0) { failures++; System.out.println("FAIL FistBump r0"); }
+            // Before partner: TFT (opp1 defected -> defect)
+            if (fb.selectAction(1, new int[]{0}, new int[]{1}, new int[]{0}) != 1) { failures++; System.out.println("FAIL FistBump pre-partner TFT"); }
+            // After 5 mutual-coop streak with opp1: mirror partner's last coop
+            int[] my5 = {0,0,0,0,0};
+            int[] coopOpp = {0,0,0,0,0};
+            int[] badOpp  = {1,1,1,1,1};
+            if (fb.selectAction(5, my5, coopOpp, badOpp) != 0) { failures++; System.out.println("FAIL FistBump partner-coop mirror"); }
+            System.out.println("PASS FistBumpPlayer");
+        } catch (Throwable t) { failures++; System.out.println("FAIL FistBump: " + t.getMessage()); }
+
+        // ---- XenolinguistPlayer ----
+        try {
+            XenolinguistPlayer xl = inst.new XenolinguistPlayer();
+            // Probe sequence: C,D,C,D,C,D
+            if (xl.selectAction(0, new int[0], new int[0], new int[0]) != 0) { failures++; System.out.println("FAIL Xenolinguist probe r0 (C)"); }
+            if (xl.selectAction(1, new int[]{0}, new int[]{0}, new int[]{0}) != 1) { failures++; System.out.println("FAIL Xenolinguist probe r1 (D)"); }
+            if (xl.selectAction(2, new int[]{0,1}, new int[]{0,0}, new int[]{0,0}) != 0) { failures++; System.out.println("FAIL Xenolinguist probe r2 (C)"); }
+            // Round 6: all-coop opponent -> classify COOPERATOR -> cooperate
+            int[] myProbe = {0,1,0,1,0,1};
+            int[] allCoopProbe = {0,0,0,0,0,0};
+            if (xl.selectAction(6, myProbe, allCoopProbe, allCoopProbe) != 0) { failures++; System.out.println("FAIL Xenolinguist post-probe coop"); }
+            // Round 6: all-defect opponent -> classify DEFECTOR -> defect
+            int[] allDefProbe = {1,1,1,1,1,1};
+            if (xl.selectAction(6, myProbe, allDefProbe, allDefProbe) != 1) { failures++; System.out.println("FAIL Xenolinguist post-probe defect"); }
+            System.out.println("PASS XenolinguistPlayer");
+        } catch (Throwable t) { failures++; System.out.println("FAIL Xenolinguist: " + t.getMessage()); }
+
+        // ---- FiveHundredDaysPlayer ----
+        try {
+            FiveHundredDaysPlayer fhd = inst.new FiveHundredDaysPlayer();
+            if (fhd.selectAction(0, new int[0], new int[0], new int[0]) != 0) { failures++; System.out.println("FAIL FiveHundredDays r0"); }
+            int[] allCoop = {0,0,0,0,0};
+            if (fhd.selectAction(5, allCoop, allCoop, allCoop) != 0) { failures++; System.out.println("FAIL FiveHundredDays perfect-coop should coop"); }
+            int[] withDefect = {0,1,0,0,0}; // defect at round 1 breaks the 90% threshold
+            if (fhd.selectAction(5, allCoop, withDefect, allCoop) != 1) { failures++; System.out.println("FAIL FiveHundredDays broken-dream should defect"); }
+            System.out.println("PASS FiveHundredDaysPlayer");
+        } catch (Throwable t) { failures++; System.out.println("FAIL FiveHundredDays: " + t.getMessage()); }
+
+        // ---- MillersPlanetPlayer ----
+        try {
+            MillersPlanetPlayer mp = inst.new MillersPlanetPlayer();
+            if (mp.selectAction(0, new int[0], new int[0], new int[0]) != 0) { failures++; System.out.println("FAIL MillersPlanet r0"); }
+            if (mp.selectAction(6, new int[6], new int[6], new int[6]) != 0) { failures++; System.out.println("FAIL MillersPlanet no-signal"); }
+            // Round 7: react to round 0
+            int[] h7coop = new int[7];
+            if (mp.selectAction(7, h7coop, h7coop, h7coop) != 0) { failures++; System.out.println("FAIL MillersPlanet r7 coop-signal"); }
+            int[] h7def = new int[7]; h7def[0] = 1;
+            if (mp.selectAction(7, h7def, h7def, h7coop) != 1) { failures++; System.out.println("FAIL MillersPlanet r7 defect-signal"); }
+            System.out.println("PASS MillersPlanetPlayer");
+        } catch (Throwable t) { failures++; System.out.println("FAIL MillersPlanet: " + t.getMessage()); }
+
+        // ---- PlanABPlayer ----
+        try {
+            PlanABPlayer pab = inst.new PlanABPlayer();
+            if (pab.selectAction(0, new int[0], new int[0], new int[0]) != 0) { failures++; System.out.println("FAIL PlanAB r0"); }
+            // n=50 with all-CCC history: avg=6 per round, total=300 >= 200 -> stay Plan A (TFT)
+            int[] h50a = new int[50]; // all cooperate
+            if (pab.selectAction(50, h50a, h50a, h50a) != 0) { failures++; System.out.println("FAIL PlanAB plan-A TFT"); }
+            // n=50 with all CDD: payoff[0][1][1]=0, total=0 < 200 -> Plan B (defect)
+            int[] h50d = new int[50]; for (int i = 0; i < 50; i++) h50d[i] = 1;
+            if (pab.selectAction(50, h50a, h50d, h50d) != 1) { failures++; System.out.println("FAIL PlanAB plan-B defect"); }
+            System.out.println("PASS PlanABPlayer");
+        } catch (Throwable t) { failures++; System.out.println("FAIL PlanAB: " + t.getMessage()); }
+
+        // ---- BiancasBanPlayer ----
+        try {
+            BiancasBanPlayer bb = inst.new BiancasBanPlayer();
+            if (bb.selectAction(0, new int[0], new int[0], new int[0]) != 0) { failures++; System.out.println("FAIL BiancasBan r0"); }
+            // n=3, all-coop, no kat yet (n < 5): cooperate
+            int[] h3 = new int[3];
+            if (bb.selectAction(3, h3, h3, h3) != 0) { failures++; System.out.println("FAIL BiancasBan early no-kat coop"); }
+            // n=5, all-coop: opp1=Kat by default; Kat cooperated in last 3 -> cooperate
+            int[] h5coop = new int[5];
+            if (bb.selectAction(5, h5coop, h5coop, h5coop) != 0) { failures++; System.out.println("FAIL BiancasBan kat-coop gate open"); }
+            // n=5, opp1 (Kat) defected rounds 2-4: no coop in last 3 -> defect
+            int[] katDef = {0,0,1,1,1};
+            if (bb.selectAction(5, h5coop, katDef, h5coop) != 1) { failures++; System.out.println("FAIL BiancasBan kat-defect gate closed"); }
+            System.out.println("PASS BiancasBanPlayer");
+        } catch (Throwable t) { failures++; System.out.println("FAIL BiancasBan: " + t.getMessage()); }
 
         System.out.println(failures == 0 ? "ALL TESTS PASS" : ("FAILURES: " + failures));
         if (failures > 0)
